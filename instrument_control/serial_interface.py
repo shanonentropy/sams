@@ -187,7 +187,7 @@ class arroyo(object):
     def read_temp(self):
         """ Queries temperature read by device and returns float in
             Celsius """
-        temp = float(self.write_command("TEC:T? "))
+        temp = (self.write_command("TEC:T? "))
         return(temp)
 
 
