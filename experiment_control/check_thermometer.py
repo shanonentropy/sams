@@ -8,7 +8,7 @@ this is simple script to log temperature readings from a 4-wire thermistor
 using pymeausre 
 """
 
-from pymeasure.instruments.agilent import Agilent34401A
+import pyvisa 
 import time
 import numpy as np
 from datetime import datetime, date
@@ -22,15 +22,29 @@ import sys
 
 ####### declare the instrument 
 # Connect to the multimeter
-dmm = Agilent34401A("GPIB::1") # check to see if this is true
-# Set the measurement mode to temperature
-dmm.mode = Agilent34401A.Mode.temperature
-# Set the number of readings to take
-dmm.trigger_count = 10
-# Test run of the readout utility; Take readings and print them
-readings = dmm.take_reading()
-print(readings)
+rm = pyvisa.ResourceManager()
+dmm = rm.open_resource("GPIB0::21::INSTR") # check to see if this is true
+# Set the measurement
 
+#rest the device
+dmm.write("*RST")
+#configure to measure resistnace/voltage
+dmm.write("*RST")  #dmm.write(":CONF:VOLT:DC")
+# set range to auto
+dmm.write(":RES:RANG:AUTO:ON")
+#set the integration time to 1 sec for resistance/ for voltage 10 cycles
+dmm.write(":RES:APER 1") #dmm.write(":CONF:VOLT:DC")
+# set source trig to immediate
+dmm.write(":TRIG:SOUR IMM")
+#set num of readings to 5
+dmm.write(":SAMP:COUN 5")
+# take the readings 
+dmm.write(":SAMP:COUNT:AUTO ONCE")
+dmm.write(":FORM:ELEM READ")
+# put readings into a container
+a = np.fromstring((dmm.query(":READ?")).replace('\n',','), sep=',').mean()
+print('the mean resistance value is {}'.format(a))
+              
 
 # path to where file with given name is stored
 folder = Path("c:/sams/saved_data")
@@ -40,17 +54,16 @@ file_open = folder / fn
 
 # function for recording temperature to file_open
 
-def temp_recorder(time_duration, time_spacing = 10):
+def temp_recorder(time_duration, time_spacing = 60):
     ''' time_duration: in secs, the total length of the measurement
     time_spacing  is the sleep time between readings'''
     for x in range(time_duration//2):
         t_e = np.round((time.monotonic()-to), 2)
         time_stp = time.monotonic()
-        a = dmm.take_reading()
-        #b = a.split('\r'); c = a#b[0]
-        data_writer.writerow({'index':x,'elapsed_time':t_e,'time':time_stp, 'temp':a})
+        a = np.fromstring((dmm.query(":READ?")).replace('\n',','), sep=',').mean()
+        data_writer.writerow({'index':x,'elapsed_time':t_e,'time':time_stp, 'resistance':a})
         data.flush()# forces python to write to disk rather than writing to file in memory
-        time.sleep(time_spacing) # wait 30 secon
+        time.sleep(time_spacing) # wait 10 secon
 
 
 # write a loop to measure over time frame covering the temperature experiment
