@@ -21,6 +21,9 @@ measurements.
 
 validation of this code will also validate the csv.DictWriter and time.monotonic
 approach
+
+pow replaced with laser.get_power() call
+
 """
 
 # import modules
@@ -36,13 +39,13 @@ from datetime import date
 sys.path.append('c:\\sams\\instrument_control')
 # import insturment control modules
 from thorlabs_powermeter_API import *
-from dlnsec import DLnsec#, *  ### test to see if * is necessary
+from dlnsec import DLnsec #, *  ### test to see if * is necessary
 
 '''declare instruments'''
 # create an instance of arroyo
 power_meter=ThorlabsPM100D()
 # create an instance of the laser'''
-laser=dlnsec('COM7')
+laser= DLnsec('COM7')
 
 '''set a min laser power'''
 laser.set_power(5)  # run 5, 10, 15, 20, 25, and 30
@@ -58,7 +61,7 @@ folder = Path("c:\\sams\saved_data")
 def power_record(time_duration):
     for x in range(time_duration):
         t_e = np.round((time.monotonic()-to), 2)
-        data_writer.DictWriter({'index':x,'elapsed_time':t_e,'time':time.monotonic(), 'power':power_meter.measure_power()})   # record index, elapsed time, machine time and power meter output
+        data_writer.writerow({'index':x,'elapsed_time':t_e,'time':time.monotonic(),'set_power':laser.get_power() ,'power':power_meter.measure_power()})   # record index, elapsed time, machine time and power meter output
         data.flush()# forces python to write to disk rather than writing to file in memory
         time.sleep(1) # wait 1 seconds
 
@@ -67,10 +70,9 @@ def power_record(time_duration):
 # loop over laser power and record data
 def laser_power_loop(time_duration):
     for pow in [1,10,30,50,80,90]:
-        print(i) #delete after debugging
+        print(pow) #delete after debugging
         laser.set_power(pow)
         print('laser power set to {} percent'.format(pow))
-        to = time.monotonic()
         power_record(time_duration)
 
 # set file name
@@ -80,12 +82,13 @@ fn = 'datalog_'+date+'_laser_power_mw.txt'
 file_open = folder / fn
 
 with open(file_open, mode ='w', newline='') as data:
-    fieldnames = ['index', 'elapsed_time', 'time', 'power']
+    fieldnames = ['index', 'elapsed_time', 'time', 'set_power','power']
     data_writer = csv.DictWriter(data, fieldnames=fieldnames)
     data_writer.writeheader()
+    to = time.monotonic()
     laser_power_loop(time_duration)
 
 laser.shutdown()
 laser.close()
 
-'''when done for the day'''
+print('''when done for the day''')

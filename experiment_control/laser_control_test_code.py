@@ -8,9 +8,9 @@ testing dlnsec control software
 
 
 """
-import modules
+#import modules
 import sys
-sys.path('c:\\sams\instrument_control')
+sys.path.append('c://sams/instrument_control')
 from dlnsec import DLnsec # ,* test if star is necessary
 #from waiting import wait
 from time import sleep
@@ -29,7 +29,7 @@ laser.set_mode('LAS')
 laser.on()
 
 #turn laser off
-laser.off()
+#laser.off()
 
 #close comm
 #laser.close()
@@ -38,11 +38,12 @@ laser.off()
 
 power_level = [1,5,10,20,30,50,80,40,20,10,5,1]
 
-laser = DLnsec('com7')
-laser.set_mode('LAS')
-laser.on()
+#laser = DLnsec('com7')
+#laser.set_mode('LAS')
+#laser.on()
 for p in power_level:
     laser.set_power(p)
-    sleep(60)
+    print(laser.get_power())
+    sleep(10)
 
 laser.close()

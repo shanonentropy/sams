@@ -36,7 +36,8 @@ class Data_Acq_PL:
         '''set_point default is 25C, it is the temp over which power dependence is measured
         power_level is list containing the percent power level of the laser used in the measurement '''
         drywell.set_temp(set_point); #drywell.set_output(1);
-        wait(drywell.read_stability_status, sleep_seconds =20, timeout_seconds=3600)
+        #wait(drywell.read_stability_status, sleep_seconds =20, timeout_seconds=3600)
+        wait_for_drywell(drywell.read_stability_status(), sleep_seconds=30, timeout_seconds=3000)
         drywell.beep()
         for p in power_level:
             laser.set_power(p); print('now in laser loop with power at {} percent'.format(p))
@@ -56,7 +57,7 @@ class Data_Acq_PL:
             current_temp = drywell.read_temp()
             drywell.set_temp((temp_index[i]))
             print('set temp is:',drywell.read_set_temp()); print('current temp is:',drywell.read_temp());
-            wait(drywell.read_stability_status, sleep_seconds =20, timeout_seconds=2000)
+            wait_for_drywell(drywell.read_stability_status, sleep_seconds =20, timeout_seconds=2000)
             drywell.beep()
             print(drywell.read_stability_status()); sleep(settling_time)
             print('now stable at ', drywell.read_temp()); print(drywell.read_stability_status());
@@ -101,7 +102,8 @@ class Data_Acq_PL:
             note: pre-ramp is fixed at 100
         '''
         set_point = low_temp; #print(drywell.read_output());
-        wait(drywell.read_stability_status, sleep_seconds =20, timeout_seconds=6000)
+        #wait(drywell.read_stability_status, sleep_seconds =20, timeout_seconds=6000)
+        wait_for_drywell(drywell.read_stability_status(), sleep_seconds=30, timeout_seconds=3000)
         drywell.beep()
         sleep(sleep_time)
         #loop_laser_power()
@@ -145,7 +147,8 @@ class Data_Acq_PL:
         '''
         exp = 'automated_pl_exp_mod' # dummy camera 'xxxx'
         drywell.set_temp(t)
-        wait(drywell.read_stability_status, sleep_seconds =20, timeout_seconds=2000)
+        wait_for_drywell(drywell.read_stability_status(), sleep_seconds=30, timeout_seconds=3000)
+        #wait(drywell.read_stability_status, sleep_seconds =20, timeout_seconds=2000)
         print(drywell.read_stability_status()); sleep(settling_time)
         print('now stable at ', drywell.read_temp()); print(drywell.read_stability_status());
         for i in range(n):

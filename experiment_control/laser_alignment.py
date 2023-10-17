@@ -30,5 +30,5 @@ while True:
         laser.on()
     elif status.lower()!='l':
         laser.off()
-        print('laser turned off')
+        print('laser turned off, not closed')
         break
