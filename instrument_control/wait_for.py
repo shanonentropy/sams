@@ -29,12 +29,12 @@ def wait_for_x(funk, sleep_seconds = 30, timeout_seconds= 3000):
         elif funk ==1:
                 print('stable'); #print(time.monotonic()-to)
                 break
-        elif funk !=1:
+        else:
             sleep(sleep_seconds)
             count = count+1
-        else:
-            print('timed out')
-            break
+            print('unstable output', count)
+    else:
+        print('timed out')
 
 #### drywell specific wait module
 
