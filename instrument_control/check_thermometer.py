@@ -29,10 +29,12 @@ import sys
 
 
 ####### declare the instrument 
-# Connect to the multimeter
+
+## Connect to the multimeter
 rm = pyvisa.ResourceManager()
 dmm = rm.open_resource("GPIB0::21::INSTR") # check to see if this is true
-# Set the measurement
+
+## Set the measurement
 
 #rest the device
 dmm.write("*RST")
@@ -56,13 +58,15 @@ print('the mean resistance value is {}'.format(a))
 
 # path to where file with given name is stored
 folder = Path("c:/sams/saved_data")
-date =  datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S") #str(date.today()).replace('-','')
+date =  datetime.now().strftime("%Y_%m_%d_%H_%M_%S") #str(date.today()).replace('-','')
 fn = 'datalog_'+date+'_check_thermistor.txt'
 file_open = folder / fn
 
 # function for recording temperature to file_open
 
-time_druation = 24*3600 # updae this number accordingly
+# num of hours
+hr = 2
+time_druation = hr*3600 # update this number accordingly
 
 # write a loop to measure over time frame covering the temperature experiment
 # log machine time, monotnic time and temperatuer and/or resistance 
@@ -70,7 +74,7 @@ time_druation = 24*3600 # updae this number accordingly
 
 # open file in write module
 
-def writer():
+def writer(time_duration, time_spacing=60):
     ''' this code'''
     with open(file_open, mode ='w', newline='') as data:
         fieldnames = ['index', 'elapsed_time', 'time', 'temp']
@@ -86,23 +90,9 @@ def writer():
             data_writer.writerow({'index':x,'elapsed_time':t_e,'time':time_stp, 'resistance':a})
             data.flush()# forces python to write to disk rather than writing to file in memory
             time.sleep(time_spacing) # wait 10 secon
-writer()
 
+writer(time_druation)
 
-'''
-
-def temp_recorder(time_duration, time_spacing = 60):
-    ''' time_duration: in secs, the total length of the measurement
-    time_spacing  is the sleep time between readings'''
-    for x in range(time_duration//2):
-        t_e = np.round((time.monotonic()-to), 2)
-        time_stp = time.monotonic()
-        a = np.fromstring((dmm.query(":READ?")).replace('\n',','), sep=',').mean()
-        data_writer.writerow({'index':x,'elapsed_time':t_e,'time':time_stp, 'resistance':a})
-        data.flush()# forces python to write to disk rather than writing to file in memory
-        time.sleep(time_spacing) # wait 10 secon
-
-'''
 
 
 
