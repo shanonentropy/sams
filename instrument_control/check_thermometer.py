@@ -66,7 +66,7 @@ file_open = folder / fn
 
 # num of hours
 hr = 2
-time_druation = hr*3600 # update this number accordingly
+time_duration = hr*3600 # update this number accordingly
 
 # write a loop to measure over time frame covering the temperature experiment
 # log machine time, monotnic time and temperatuer and/or resistance 
@@ -91,7 +91,7 @@ def writer(time_duration, time_spacing=60):
             data.flush()# forces python to write to disk rather than writing to file in memory
             time.sleep(time_spacing) # wait 10 secon
 
-writer(time_druation)
+writer(time_duration)
 
 
 
