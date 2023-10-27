@@ -27,6 +27,7 @@ from datetime import datetime, date
 from pathlib import Path
 
 import time
+from time import sleep
 import csv
 import sys
 
@@ -49,40 +50,50 @@ fn = 'datalog_'+date+'_lab_monitoring.txt'
 file_open = folder / fn
 
 # function for recording temperature to file_open
+time_spacing = 30
 
-def temp_recorder(time_duration):
-    for x in range(time_duration//2):
-        t_e = np.round((time.monotonic()-to), 2)
-        time_stp = time.monotonic()
-        a = tec.read_temp()
-        #b = a.split('\r'); c = a#b[0]
-        data_writer.writerow({'index':x,'elapsed_time':t_e,'time':time_stp, 'temp':a})
-        data.flush()# forces python to write to disk rather than writing to file in memory
-        time.sleep(30) # wait 30 secon
+# data containers
+
+elapsed_time, time_step, temp = [], [], []
 
 # open file in write module
-with open(file_open, mode ='w', newline='') as data:
-    fieldnames = ['index', 'elapsed_time', 'time', 'temp']
-    data_writer = csv.DictWriter(data, fieldnames=fieldnames)
-    data_writer.writeheader()
-    print(" please note that the program as configured samples at 0.5 Hz")
-    # main code: ask for user input on when to start data collection and for how long
-    while True:
-        recorder =  input("to start recording temperature data press S, to quit the loop press Q ")
-        if recorder.lower() == 's':
-            time_duration =  input("how many hours of data do you want? enter a number ")
-            try:
-                time_duration = int(time_duration)*3600 #convert hours into seconds
-                print('lab data collection has began')
-                break
-            except ValueError:
-                print('not an integer!')
-                break
-        elif recorder.lower() == 'q':
-            print('exiting program')
+
+print(" please note that the program as configured samples at 0.5 Hz")
+# main code: ask for user input on when to start data collection and for how long
+while True:
+    recorder =  input("to start recording temperature data press S, to quit the loop press Q ")
+    if recorder.lower() == 's':
+        time_duration =  input("how many hours of data do you want? enter a number ")
+        try:
+            time_duration = int(time_duration)*3600 #convert hours into seconds
+            print('lab data collection has began')
+            to= time.monotonic(); 
+            while (time.monotonic()-to) < time_duration:
+                t_e = np.round((time.monotonic()-to), 2)
+                time_stp = time.monotonic()
+                a = tec.read_temp()
+                #print(x, a)
+                elapsed_time.append(t_e); time_step.append(time_stp); temp.append(a)
+                sleep(time_spacing) # wait 30 second
+            pass
+        except ValueError:
+            print('not an integer!')
             break
-        else:
-            print("please hit the s key")
-            #break
-    to = time.monotonic() #time at the start of the measurement
-    temp_recorder(time_duration)
+    elif recorder.lower() == 'q':
+        print('exiting program')
+        break
+    else:
+        print("please hit the s key")
+        #break
+print('done-sy')
+
+
+data =  zip( elapsed_time, time_step, temp)
+
+with open(file_open, mode ='w', newline='') as f:
+    fieldnames = [ 'elapsed_time', 'time', 'temp']
+    data_writer = csv.DictWriter(f, fieldnames=fieldnames)
+    data_writer.writeheader()
+    for row in data:
+        data_writer.writerow({'elapsed_time':data[0], 'time':data[1], 'temp':data[2] })
+

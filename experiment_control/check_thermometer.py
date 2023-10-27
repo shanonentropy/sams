@@ -49,8 +49,8 @@ print('the mean resistance value is {}'.format(a))
 # path to where file with given name is stored
 folder = Path("c:/sams/saved_data")
 date =  datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S") #str(date.today()).replace('-','')
-fn = 'datalog_'+date+'_check_thermistor.txt'
-file_open = folder / fn
+fnt = 'datalog_'+date+'_check_thermistor.txt'
+file_open_temp = folder / fnt
 
 
 
@@ -58,46 +58,55 @@ file_open = folder / fn
 # write a loop to measure over time frame covering the temperature experiment
 # log machine time, monotnic time and temperatuer and/or resistance 
 
-def writer(time_spacing = 60):
+
+#elapsed_time_temp, time_step_temp, resistance = [],[],[]
+
+
+def temp_writer(elapsed_time_temp =[], time_step_temp=[], resistance=[], time_spacing = 60):
     ''' this code'''
-    with open(file_open, mode ='w', newline='') as data:
-        fieldnames = ['index', 'elapsed_time', 'time', 'temp']
-        data_writer = csv.DictWriter(data, fieldnames=fieldnames)
-        data_writer.writeheader()
-        print(" please note that the program as configured samples at 0.5 Hz")
-        # main code: ask for user input on when to start data collection and for how long
-        while True:
-            recorder =  input("to start recording temperature data press S, to quit the loop press Q ")
-            if recorder.lower() == 's':
-                time_duration =  input("how many hours of data do you want? enter a number ")
-                try:
-                    time_duration = int(time_duration)*3600 #convert hours into seconds
-                    print('lab data collection has began')
-                    to = time.monotonic()
-                    for x in range(time_duration//2):
-                        t_e = np.round((time.monotonic()-to), 2)
-                        time_stp = time.monotonic()
-                        a = np.fromstring((dmm.query(":READ?")).replace('\n',','), sep=',').mean()
-                        data_writer.writerow({'index':x,'elapsed_time':t_e,'time':time_stp, 'resistance':a})
-                        data.flush()# forces python to write to disk rather than writing to file in memory
-                        time.sleep(time_spacing) # wait 10 secon
-                except ValueError:
-                    print('not an integer!')
-                    break
-            elif recorder.lower() == 'q':
-                print('exiting program')
+
+    print(" please note that the program as configured samples at 0.5 Hz")
+    # main code: ask for user input on when to start data collection and for how long
+    while True:
+        recorder =  input("to start recording temperature data press S, to quit the loop press Q ")
+        if recorder.lower() == 's':
+            time_duration =  input("how many hours of data do you want? enter a number ")
+            try:
+                time_duration = int(time_duration)*3600 #convert hours into seconds
+                print('lab data collection has began')
+                to = time.monotonic()
+                while time.monotonic()-to < time_duration:
+                    t_e = np.round((time.monotonic()-to), 2)
+                    time_stp = time.monotonic()
+                    a = np.fromstring((dmm.query(":READ?")).replace('\n',','), sep=',').mean()
+                    elapsed_time_temp.append(t_e),time_step_temp.append(time_stp), resistance.append(a)
+                    time.sleep(time_spacing) # wait 10 secon
+                pass
+            except ValueError:
+                print('not an integer!')
                 break
-            else:
-                print("please hit the s key")
-                #break
-
-
-writer()
-
-
-
-
-
+        elif recorder.lower() == 'q':
+            print('exiting program')
+            break
+        else:
+            print("please hit the s key")
+            #break
+            
+    '''        
+    build a calitbration module: in numpy instantiate a new array
+where calibration is applied to the resistance array and the resulting 
+data is stored as an array labelled temperature
+'''      
+    data = zip(elapsed_time_temp, time_step_temp, resistance)
+       
+    with open(file_open_temp, mode ='w', newline='') as f:
+        fieldnames = [ 'elapsed_time', 'time', 'resistance']
+        data_writer = csv.DictWriter(f, fieldnames=fieldnames)
+        data_writer.writeheader()
+        for r in data:
+            data_writer.writerow({'elapsed_time':r[0], 'time':r[1], 'resistance':r[2]})
+        
+temp_writer()
 
 
 
