@@ -27,6 +27,7 @@ from datetime import datetime, date
 from pathlib import Path
 
 import time
+from time import sleep
 import csv
 import sys
 from time import sleep
@@ -57,11 +58,16 @@ file_open = folder / fn
 # function for recording temperature to file_open
 time_spacing = 30
 
+<<<<<<< HEAD
 
 
 # data containers
 
 
+=======
+# data containers
+
+>>>>>>> ad98bbdb63b94044be96e4be0caabc0b25d4f3da
 elapsed_time, time_step, temp = [], [], []
 
 # open file in write module
@@ -98,8 +104,15 @@ print('done-sy')
 
 
 data =  list(zip( elapsed_time, time_step, temp))
+<<<<<<< HEAD
 
+=======
+>>>>>>> ad98bbdb63b94044be96e4be0caabc0b25d4f3da
 import pandas as pd
 df = pd.DataFrame(data)
 df.columns=['elapsed_time', 'time_stepped', 'temperature']
 df.to_csv(file_open)
+<<<<<<< HEAD
+=======
+
+>>>>>>> ad98bbdb63b94044be96e4be0caabc0b25d4f3da

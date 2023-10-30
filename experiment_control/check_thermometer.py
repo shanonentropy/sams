@@ -49,7 +49,11 @@ print('the mean resistance value is {}'.format(a))
 
 # path to where file with given name is stored
 folder = Path("c:/sams/saved_data")
+<<<<<<< HEAD
 date =  datetime.now().strftime("%Y_%m_%d_%H_%M_%S") 
+=======
+date =  datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S") #str(date.today()).replace('-','')
+>>>>>>> ad98bbdb63b94044be96e4be0caabc0b25d4f3da
 fnt = 'datalog_'+date+'_check_thermistor.txt'
 file_open_temp = folder / fnt
 
@@ -76,12 +80,17 @@ def temp_writer(elapsed_time_temp =[], time_step_temp=[], resistance=[], time_sp
                 time_duration = int(time_duration)*3600 #convert hours into seconds
                 print('lab data collection has began')
                 to = time.monotonic()
+<<<<<<< HEAD
                 while (time.monotonic()-to) < time_duration:
+=======
+                while time.monotonic()-to < time_duration:
+>>>>>>> ad98bbdb63b94044be96e4be0caabc0b25d4f3da
                     t_e = np.round((time.monotonic()-to), 2)
                     time_stp = time.monotonic()
                     a = np.fromstring((dmm.query(":READ?")).replace('\n',','), sep=',').mean()
                     elapsed_time_temp.append(t_e),time_step_temp.append(time_stp), resistance.append(a)
                     time.sleep(time_spacing) # wait 10 secon
+<<<<<<< HEAD
                     print(time.monotonic()-to)
                 break
             except ValueError:
@@ -147,6 +156,34 @@ def writer(file_open):
 writer(file_open)
 '''
 
+=======
+                break
+            except ValueError:
+                print('not an integer!')
+                break
+        elif recorder.lower() == 'q':
+            print('exiting program')
+            break
+        else:
+            print("please hit the s key")
+            #break
+            
+    '''        
+    build a calitbration module: in numpy instantiate a new array
+where calibration is applied to the resistance array and the resulting 
+data is stored as an array labelled temperature
+'''      
+    data = list(zip(elapsed_time_temp, time_step_temp, resistance))
+       
+    with open(file_open_temp, mode ='w', newline='') as f:
+        fieldnames = [ 'elapsed_time', 'time', 'resistance']
+        data_writer = csv.DictWriter(f, fieldnames=fieldnames)
+        data_writer.writeheader()
+        for r in data:
+            data_writer.writerow({'elapsed_time':r[0], 'time':r[1], 'resistance':r[2]})
+        
+temp_writer()
+>>>>>>> ad98bbdb63b94044be96e4be0caabc0b25d4f3da
 
 
 
