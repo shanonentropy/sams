@@ -72,10 +72,11 @@ while True:
                 t_e = np.round((time.monotonic()-to), 2)
                 time_stp = time.monotonic()
                 a = tec.read_temp()
+                a = a.split('\r')[0]
                 #print(x, a)
                 elapsed_time.append(t_e); time_step.append(time_stp); temp.append(a)
                 sleep(time_spacing) # wait 30 second
-            pass
+            break
         except ValueError:
             print('not an integer!')
             break
@@ -88,12 +89,9 @@ while True:
 print('done-sy')
 
 
-data =  zip( elapsed_time, time_step, temp)
-
-with open(file_open, mode ='w', newline='') as f:
-    fieldnames = [ 'elapsed_time', 'time', 'temp']
-    data_writer = csv.DictWriter(f, fieldnames=fieldnames)
-    data_writer.writeheader()
-    for row in data:
-        data_writer.writerow({'elapsed_time':data[0], 'time':data[1], 'temp':data[2] })
+data =  list(zip( elapsed_time, time_step, temp))
+import pandas as pd
+df = pd.DataFrame(data)
+df.columns=['elapsed_time', 'time_stepped', 'temperature']
+df.to_csv(file_open)
 

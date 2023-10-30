@@ -81,7 +81,7 @@ def temp_writer(elapsed_time_temp =[], time_step_temp=[], resistance=[], time_sp
                     a = np.fromstring((dmm.query(":READ?")).replace('\n',','), sep=',').mean()
                     elapsed_time_temp.append(t_e),time_step_temp.append(time_stp), resistance.append(a)
                     time.sleep(time_spacing) # wait 10 secon
-                pass
+                break
             except ValueError:
                 print('not an integer!')
                 break
@@ -97,7 +97,7 @@ def temp_writer(elapsed_time_temp =[], time_step_temp=[], resistance=[], time_sp
 where calibration is applied to the resistance array and the resulting 
 data is stored as an array labelled temperature
 '''      
-    data = zip(elapsed_time_temp, time_step_temp, resistance)
+    data = list(zip(elapsed_time_temp, time_step_temp, resistance))
        
     with open(file_open_temp, mode ='w', newline='') as f:
         fieldnames = [ 'elapsed_time', 'time', 'resistance']
