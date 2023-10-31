@@ -8,8 +8,9 @@ this is simple script to log temperature readings from a 4-wire thermistor
 using pymeausre 
 """
 
+
 import pyvisa 
-import time
+import time, datetime
 import numpy as np
 from datetime import datetime, date
 from pathlib import Path
@@ -48,77 +49,53 @@ print('the mean resistance value is {}'.format(a))
 
 # path to where file with given name is stored
 folder = Path("c:/sams/saved_data")
-date = str(date.today()).replace('-','')
-fn = 'datalog_'+date+'_check_thermistor.txt'
-file_open = folder / fn
+date =  str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S")) 
+fnt = 'datalog_'+date+'_check_thermistor.txt'
+file_open_temp = folder / fnt
 
-# function for recording temperature to file_open
-
-def temp_recorder(time_duration, time_spacing = 60):
-    ''' time_duration: in secs, the total length of the measurement
-    time_spacing  is the sleep time between readings'''
-    for x in range(time_duration//2):
-        t_e = np.round((time.monotonic()-to), 2)
-        time_stp = time.monotonic()
-        a = np.fromstring((dmm.query(":READ?")).replace('\n',','), sep=',').mean()
-        data_writer.writerow({'index':x,'elapsed_time':t_e,'time':time_stp, 'resistance':a})
-        data.flush()# forces python to write to disk rather than writing to file in memory
-        time.sleep(time_spacing) # wait 10 secon
-
-
-# write a loop to measure over time frame covering the temperature experiment
-# log machine time, monotnic time and temperatuer and/or resistance 
 
 
 # open file in write module
-with open(file_open, mode ='w', newline='') as data:
-    fieldnames = ['index', 'elapsed_time', 'time', 'temp']
-    data_writer = csv.DictWriter(data, fieldnames=fieldnames)
-    data_writer.writeheader()
-    print(" please note that the program as configured samples at 0.5 Hz")
-    # main code: ask for user input on when to start data collection and for how long
-    while True:
-        recorder =  input("to start recording temperature data press S, to quit the loop press Q ")
-        if recorder.lower() == 's':
-            time_duration =  input("how many hours of data do you want? enter a number ")
-            try:
-                time_duration = int(time_duration)*3600 #convert hours into seconds
-                print('lab data collection has began')
-                break
-            except ValueError:
-                print('not an integer!')
-                break
-        elif recorder.lower() == 'q':
-            print('exiting program')
+# write a loop to measure over time frame covering the temperature experiment
+# log machine time, monotnic time and temperatuer and/or resistance 
+
+elapsed_time_temp, time_step_temp, resistance = [],[],[]
+time_spacing = 10
+
+print(" please note that the program as configured samples at 0.5 Hz")
+# main code: ask for user input on when to start data collection and for how long
+while True:
+    recorder =  input("to start recording temperature data press S, to quit the loop press Q ")
+    if recorder.lower() == 's':
+        time_duration =  input("how many hours of data do you want? enter a number ")
+        try:
+            time_duration = int(time_duration)*3600 #convert hours into seconds
+            print('lab data collection has began')
+            to = time.monotonic()
+            while (time.monotonic()-to) < time_duration:
+                t_e = np.round((time.monotonic()-to), 2)
+                time_stp = time.monotonic()
+                a = np.fromstring((dmm.query(":READ?")).replace('\n',','), sep=',').mean()
+                elapsed_time_temp.append(t_e),time_step_temp.append(time_stp), resistance.append(a)
+                time.sleep(time_spacing) # wait 10 secon
+                print(time.monotonic()-to)
             break
-        else:
-            print("please hit the s key")
-            #break
-    to = time.monotonic() #time at the start of the measurement
-    temp_recorder(time_duration)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''
-# Set the measurement mode to resistance
-dmm.mode = Agilent34401A.Mode.resistance
-
-# Set the number of readings to take
-dmm.trigger_count = 10
-
-# Take the readings and print them
-readings = dmm.take_reading()
-print(readings)
-'''
+        except ValueError:
+            print('not an integer!')
+            break
+    elif recorder.lower() == 'q':
+        print('exiting program')
+        break
+    else:
+        print("please hit the s key")
+        #break
+data = list(zip(elapsed_time_temp, time_step_temp, resistance))
+print('data is being saved')   
+with open(file_open_temp, mode ='w', newline='') as f:
+    fieldnames = [ 'elapsed_time', 'time_step', 'resistance']
+    data_writer = csv.DictWriter(f, fieldnames=fieldnames)
+    data_writer.writeheader()
+    for r in data:
+        data_writer.writerow({'elapsed_time':r[0], 'time_step':r[1], 'resistance':r[2]})
+        
 

@@ -52,10 +52,7 @@ from PrincetonInstruments.LightField.AddIns import ExperimentSettings
 from PrincetonInstruments.LightField.AddIns import SpectrometerSettings
 
 
-
-### top code will ensure that laser, heat bath and camera are in communication
-### and properly set
-####### set laser
+####### instantiate the laser
 
 laser = DLnsec('com7')  # check if this is the correct port
 print(laser.get_power())  # check initial condition
@@ -64,15 +61,10 @@ power = 10
 laser.set_power(power)
 # set mode   --- in dummy experiments laser is never turned on 
 #                the idea is to test and see if the class loads properly
-#laser.set_mode('LAS')
-# laser action  
-#laser.on()
-#turn laser off
-#laser.off()
 
-####### set drywell
+####### instantiate the drywell
 
-drywell = dry_well()
+drywell = Dry_well()
 print(drywell.read_stability_status())
 #initial conditions
 current_temp = drywell.read_temp()
