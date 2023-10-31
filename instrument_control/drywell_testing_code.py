@@ -49,10 +49,10 @@ print(drywell.read_temp())
 are working properly
 
 to do list:
-    *  connect check thermometer to the computer
-    * test the code for check thermometer
+    *  connect check thermometer to the computer (see experimental_control folder 10/31)
+    * test the code for check thermometer (done 10/31)
     * if nec., modify the code for check thermometer
-    * proceed with the loop below
+    * proceed with the loop below 
         it should yield a bunch of files 
 '''
 
