@@ -34,7 +34,7 @@ from wait_for import wait_for_x, wait_for_drywell
 
 
 ########## wait module -  commented out
-'''def wait_for_drywell(sleep_seconds = 30, timeout_seconds= 3000):
+def wait_for_drywell(sleep_seconds = 30, timeout_seconds= 3000):
     count = 1; 
     print('starting counter:', count); 
     to = time.monotonic() 
@@ -42,7 +42,7 @@ from wait_for import wait_for_x, wait_for_drywell
         if drywell.read_stability_status()== 0:
             sleep(sleep_seconds)
             count+= 1
-            print(count)
+            print(count, drywell.read_temp(), drywell.read_stability_status())
         elif drywell.read_stability_status() ==1:
                 print('stable'); print(time.monotonic()-to)
                 break
@@ -53,7 +53,7 @@ from wait_for import wait_for_x, wait_for_drywell
         else:
             print('timed out')
             break
-'''
+
 ####### instantiate the drywell 
 
 drywell = Dry_well()

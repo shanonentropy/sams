@@ -57,7 +57,7 @@ class Dry_well(object):
             print (p)
 
             # Choosing COM port from list of available connections 
-            if "USB-to-Serial Comm Port (COM4)" in p[1]:
+            if "USB-to-Serial Comm Port (COM8)" in p[1]:
                 try:
                     self.port = p[0]
                     # Setting up and connecting to device
