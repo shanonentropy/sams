@@ -103,6 +103,80 @@ print(drywell.read_temp())
 
 ####### setup camera and spectrometer
 
+####### spectrometer specific functions
+
+def set_center_wavelength(center_wave_length): 
+    # Set the spectrometer center wavelength   
+    experiment.SetValue(
+        SpectrometerSettings.GratingCenterWavelength,
+        center_wave_length)    
+
+
+def get_spectrometer_info():   
+    print(String.Format("{0} {1}","Center Wave Length:" ,
+                  str(experiment.GetValue(
+                      SpectrometerSettings.GratingCenterWavelength))))     
+       
+    print(String.Format("{0} {1}","Grating:" ,
+                  str(experiment.GetValue(
+                      SpectrometerSettings.Grating))))
+    
+def set_temperature(temperature):
+    # Set temperature when LightField is ready to run and
+    # when not acquiring data.     
+    if (experiment.IsReadyToRun & experiment.IsRunning==False):
+        experiment.SetValue(
+            CameraSettings.SensorTemperatureSetPoint,
+            temperature)        
+
+def get_current_temperature():
+    print(String.Format(
+        "{0} {1}", "Current Temperature:",
+        experiment.GetValue(CameraSettings.SensorTemperatureReading)))
+
+def get_current_setpoint():
+    print(String.Format(
+        "{0} {1}", "Current Temperature Set Point:",
+        experiment.GetValue(CameraSettings.SensorTemperatureSetPoint)))        
+
+def get_status():    
+    current = experiment.GetValue(CameraSettings.SensorTemperatureStatus)
+    
+    print(String.Format(
+        "{0} {1}", "Current Status:",
+        "UnLocked" if current == SensorTemperatureStatus.Unlocked 
+        else "Locked"))
+    return current
+
+def set_value(setting, value):    
+    # Check for existence before setting
+    # gain, adc rate, or adc quality
+    if experiment.Exists(setting):
+        experiment.SetValue(setting, value )
+
+def device_found():
+    # Find connected device
+    for device in experiment.ExperimentDevices:
+        if (device.Type == DeviceType.Camera):
+            return True
+            print("Camera not found. Please add a camera and try again.")
+    return False  
+
+def experiment_completed(sender, evernt_args):
+    print('..acq completed')
+    acquireCompleted.Set()
+    
+
+def AcquireAndLock(name):
+    print('acq...', end='')
+    name += '{0:06.2f}ms.CWL{1:07.2f}nm'.format(\
+                                                experiment.GetValue(CameraSettings.ShutterTimingExposureTime)\
+                                             ,   700.0)
+    experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
+    experiment.Acquire()
+    acquireCompleted.WaitOne()  
+
+    
     
 # Create the LightField Application (true for visible)
 # The 2nd parameter forces LF to load with no experiment
@@ -127,11 +201,6 @@ AcquireAndLock('dummy_test3')
 
 dq = Data_Acq_PL()
 
-
-
-
-
-
 ##################################################################
 ##################################################################
 ##################################################################
@@ -146,8 +215,7 @@ dq = Data_Acq_PL()
 #laser.set_power(90)
 
 ''' set drywell to room temp or some chosen value'''
-drywell.set_temp(25); drywell.beep()
-
+drywell.set_temp(25); wait_for_x(drywell); drywell.beep()
 
 ''' First we want to see if the dummy camera 
 will let us test the get_status() loop with with laser power loop '''
@@ -155,7 +223,7 @@ will let us test the get_status() loop with with laser power loop '''
 # first we want to ensure that temp is locked; #### not working
 while True:
     if get_status()== 1:  #'note: locked value in spectroscopy appears to be 1'
-        dq.loop_laser_power()  #'write out stuff to declared in the func'
+        dq.loop_laser_power(drywell, wait_for_x, laser, AcquireAndLock)  #'write out stuff to declared in the func'
     else:
         print('temperature lock lost, terminate experiment')
         break
@@ -174,35 +242,31 @@ print('starting temp cycling')
 
 ''' single cycle temp'''
 # print the proposed profile
-Cycling(start=25, stop=26, step=1, cycles=1).params()
+Cycling(start=25, stop=27, step=1, cycles=1).params()
 
 # setup the profile
 temp_index =  Cycling(start=25, stop=26, step=1, cycles=1).temperatures()
 # this list will log meta deta for the thermal profile'''
-#meta_data =[]
-
 #execute the temperature profile
-dq.temperature_cycling(temp_index, meta_data=[]) #'write out stuff to declared in the func'
+dq.temperature_cycling(temp_index, wait_for_x, AcquireAndLock, get_status, laser, drywell) #'write out stuff to declared in the func'
 
 ###################
-
 
 
 ''' acquire stability data '''
 
 
+
 # first we want to ensure that temp is locked
 while True:
     if get_status()== 1: #'note: enter appropriate return for locked':
-        dq.stability_analysis()  #'write out stuff to declared in the func'
+        dq.stability_analysis(wait_for_x, drywell, laser, AcquireAndLock)  #'wait_for_x, drywell_cls, laser_cls,AcquireAndLock,
     else:
         print('temperature lock lost, terminate experiment')
         break
-#
 
 ''' acquire ramp data '''
-
-dq.ramp_test(low_temp = 25, high_temp=30, sleep_time=10, acqs=1000 ) #'write out stuff to declared in the func'
+dq.ramp_test(wait_for_x, drywell, get_status, laser, AcquireAndLock, low_temp = 25, high_temp=30, sleep_time=10, acqs=1000 ) #'write out stuff to declared in the func'
 
 #### sep test the ramp_test code with new exp loading, if that fails, 
 #### build in provision in the code to wait for the manual adjustment
