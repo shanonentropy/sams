@@ -336,12 +336,16 @@ def stability_analysis(n=100, t=25, delta_time=1, settling_time=10): #change set
     wait_for_x(drywell, sleep_seconds =20, timeout_seconds=2000)
     print(drywell.read_stability_status()); sleep(settling_time)
     print('now stable at ', drywell.read_temp()); print(drywell.read_stability_status());
-    for i in range(n):
-        print('at {} C stability run'.format(t), i)
-        fn = 'laser_power_'+str(laser.get_power())+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
-        ''' put in call to load a different camera setting'''
-        AcquireAndLock(fn)
-        sleep(delta_time)
+    while True:
+        if get_status_temp()== 'Locked':   
+            for i in range(n):
+                print('at {} C stability run'.format(t), i)
+                fn = 'laser_power_'+str(laser.get_power())+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
+                ''' put in call to load a different camera setting'''
+                AcquireAndLock(fn)
+                sleep(delta_time)
+        else:
+            print('temp lock broken')
 
 
 
