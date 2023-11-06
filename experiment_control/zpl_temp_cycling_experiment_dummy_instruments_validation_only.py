@@ -388,7 +388,8 @@ temperature_cycling(temp_index)
 
 
 
-''' acquire stability data '''
+''' acquire stability data: rewrite this code to include get_status_temp call
+correctly'''
 
 
 # first we want to ensure that temp is locked
