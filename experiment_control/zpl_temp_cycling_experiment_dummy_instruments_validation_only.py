@@ -6,7 +6,7 @@ Created on Wed Sep 13 14:52:01 2023
 this code will be be used to control the PL spectrocopy experiment
 it control the camera, spectrometer, laser and drywell.
 
-code has been updated to run 
+code has been updated to run
 """
 #import modules
 import time
@@ -55,31 +55,31 @@ from PrincetonInstruments.LightField.AddIns import SpectrometerSettings
 
 ####### spectrometer specific functions
 
-def set_center_wavelength(center_wave_length): 
-    # Set the spectrometer center wavelength   
+def set_center_wavelength(center_wave_length):
+    # Set the spectrometer center wavelength
     experiment.SetValue(
         SpectrometerSettings.GratingCenterWavelength,
-        center_wave_length)    
+        center_wave_length)
 
 
-def get_spectrometer_info():   
+def get_spectrometer_info():
     print(String.Format("{0} {1}","Center Wave Length:" ,
                   str(experiment.GetValue(
-                      SpectrometerSettings.GratingCenterWavelength))))     
-       
+                      SpectrometerSettings.GratingCenterWavelength))))
+
     print(String.Format("{0} {1}","Grating:" ,
                   str(experiment.GetValue(
                       SpectrometerSettings.Grating))))
-    
-####### camera specific functions    
+
+####### camera specific functions
 
 def set_temperature(temperature):
     # Set temperature when LightField is ready to run and
-    # when not acquiring data.     
+    # when not acquiring data.
     if (experiment.IsReadyToRun & experiment.IsRunning==False):
         experiment.SetValue(
             CameraSettings.SensorTemperatureSetPoint,
-            temperature)        
+            temperature)
 
 def get_current_temperature():
     print(String.Format(
@@ -89,30 +89,30 @@ def get_current_temperature():
 def get_current_setpoint():
     print(String.Format(
         "{0} {1}", "Current Temperature Set Point:",
-        experiment.GetValue(CameraSettings.SensorTemperatureSetPoint)))        
+        experiment.GetValue(CameraSettings.SensorTemperatureSetPoint)))
 
-def get_status():    
+def get_status():
     current = experiment.GetValue(CameraSettings.SensorTemperatureStatus)
-    
+
     print(String.Format(
         "{0} {1}", "Current Status:",
-        "UnLocked" if current == SensorTemperatureStatus.Unlocked 
+        "UnLocked" if current == SensorTemperatureStatus.Unlocked
         else "Locked"))
-    
+
     return current
 
-def get_status_temp():    
+def get_status_temp():
     current = experiment.GetValue(CameraSettings.SensorTemperatureStatus)
-    
+
     t_status  = (String.Format(
-        "{0}", 
-        "UnLocked" if current == SensorTemperatureStatus.Unlocked 
+        "{0}",
+        "UnLocked" if current == SensorTemperatureStatus.Unlocked
         else "Locked"))
-        
+
     return t_status
 
 
-def set_value(setting, value):    
+def set_value(setting, value):
     # Check for existence before setting
     # gain, adc rate, or adc quality
     if experiment.Exists(setting):
@@ -123,15 +123,15 @@ def device_found():
     for device in experiment.ExperimentDevices:
         if (device.Type == DeviceType.Camera):
             return True
-     
+
     # If connected device is not a camera inform the user
     print("Camera not found. Please add a camera and try again.")
-    return False  
+    return False
 
 def experiment_completed(sender, evernt_args):
     print('..acq completed')
     acquireCompleted.Set()
-    
+
 
 def AcquireAndLock(name, cw = 700.0):
     print('acq...', end='')
@@ -140,7 +140,7 @@ def AcquireAndLock(name, cw = 700.0):
                                              ,   cw)
     experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
     experiment.Acquire()
-    acquireCompleted.WaitOne()  
+    acquireCompleted.WaitOne()
 
 
 # =============================================================================
@@ -152,7 +152,7 @@ print(laser.get_power())  # check initial condition
 #set initial laser power
 power = 10
 laser.set_power(power)
-# set mode   --- in dummy experiments laser is never turned on 
+# set mode   --- in dummy experiments laser is never turned on
 #                the idea is to test and see if the class loads properly
 
 
@@ -227,16 +227,16 @@ def loop_laser_power(set_point = 25, power_level= [30, 50, 90, 30]):
             AcquireAndLock(fn)
     else:
         print('temperature lock lost, terminate experiment')
-        
+
 
 
 def temperature_cycling(temp_index, meta_data=[],settling_time=10):
-    ''' temperature scanning loop, from cycling recall temperature generator 
+    ''' temperature scanning loop, from cycling recall temperature generator
     and create a temp profile'''
 
     for i in range(len(temp_index)):
         if get_status_temp()== 'Locked':
-            print('camera is locked, proceeding with exp')      
+            print('camera is locked, proceeding with exp')
             print('index', i ); #sleep(1)
             #current_temp = drywell.read_temp()
             drywell.set_temp((temp_index[i]))
@@ -246,27 +246,27 @@ def temperature_cycling(temp_index, meta_data=[],settling_time=10):
             print(drywell.read_stability_status()); sleep(settling_time)
             print('now stable at ', drywell.read_temp()); print(drywell.read_stability_status());
             ### turn on laser
-            #laser.on(); 
+            #laser.on();
             sleep(5)
             #laser.set_power(90); sleep(60)
             p = laser.get_power()
             #### call camera func, use fn to set filename base
             fn = 'laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
-            
+
             ''' this line exists so I will have a history of drywell's behaviour over the experiment
             need to add keysight thermometer readout (temp and resistance) to this file and replace drywell temp with
             check thermometer temp in the file'''
-            
+
             meta_data.append([time.time(), i, drywell.read_temp(), drywell.read_stability_status()])
             #### call camera func, use fn to set filename base
             fn = 'laser_power_'+str(p)+'_drywelltemp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
             AcquireAndLock(fn)
-            #laser.set_power(10); 
+            #laser.set_power(10);
             sleep(5)
             #laser.off()
         else:
             print('temperature lock has been lost, terminating experiment')
-                
+
     folder = Path("c:/sams/saved_data")
     dates = str(date.today()).replace('-','')
     fnm = 'meta_data_'+dates+'_nv_exp_test_temp.txt'
@@ -335,7 +335,7 @@ def stability_analysis(n=100, t=25, delta_time=1, settling_time=10): #change set
     print(drywell.read_stability_status()); sleep(settling_time)
     print('now stable at ', drywell.read_temp()); print(drywell.read_stability_status());
     while True:
-        if get_status_temp()== 'Locked':   
+        if get_status_temp()== 'Locked':
             for i in range(n):
                 print('at {} C stability run'.format(t), i)
                 fn = 'laser_power_'+str(laser.get_power())+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
