@@ -4,28 +4,16 @@ Created on Wed Oct 11 16:26:21 2023
 
 @author: zahmed
 
-Data acqustion class for PL
-
-This is a collection of functions that call upon the laser, drywell and camera
-to enable automated collection of PL data under temperature cycling and 
-temperature ramp testing conditions
-
-At the present this class will be duplicated to enable ESR measurements. In the 
-future the class could be expanded to give a keyword-based ability to choose
-between PL and ESR.
+redundant class: to be del
 
 
-note: I am using the class as container to make it easier to call these functions
-I could make import the spectroscopy class into this and pass all of its 
-variables into it but that seems a bit unnecssary since the way I use it, 
-the spectroscopy class is just a set of function and most of the instance vairables
-are stored in the *experiment*. 
 
-note: def AcquireandLock has a new variable added: cw=700.0; this is so
-that I can change the filename to reflect a change in CWL for NV_zero measurements
+
+
 
 
 """
+
 import clr # Import the .NET class library
 import sys # Import python sys module
 import os # Import os module
@@ -69,29 +57,29 @@ from PrincetonInstruments.LightField.AddIns import SpectrometerSettings
 
 
 
-def set_center_wavelength(center_wave_length): 
-    # Set the spectrometer center wavelength   
+def set_center_wavelength(center_wave_length):
+    # Set the spectrometer center wavelength
     experiment.SetValue(
         SpectrometerSettings.GratingCenterWavelength,
-        center_wave_length)    
+        center_wave_length)
 
 
-def get_spectrometer_info():   
+def get_spectrometer_info():
     print(String.Format("{0} {1}","Center Wave Length:" ,
                   str(experiment.GetValue(
-                      SpectrometerSettings.GratingCenterWavelength))))     
-       
+                      SpectrometerSettings.GratingCenterWavelength))))
+
     print(String.Format("{0} {1}","Grating:" ,
                   str(experiment.GetValue(
                       SpectrometerSettings.Grating))))
-    
+
 def set_temperature(temperature):
     # Set temperature when LightField is ready to run and
-    # when not acquiring data.     
+    # when not acquiring data.
     if (experiment.IsReadyToRun & experiment.IsRunning==False):
         experiment.SetValue(
             CameraSettings.SensorTemperatureSetPoint,
-            temperature)        
+            temperature)
 
 def get_current_temperature():
     print(String.Format(
@@ -101,29 +89,29 @@ def get_current_temperature():
 def get_current_setpoint():
     print(String.Format(
         "{0} {1}", "Current Temperature Set Point:",
-        experiment.GetValue(CameraSettings.SensorTemperatureSetPoint)))        
+        experiment.GetValue(CameraSettings.SensorTemperatureSetPoint)))
 
-def get_status():    
+def get_status():
     current = experiment.GetValue(CameraSettings.SensorTemperatureStatus)
-    
+
     print(String.Format(
         "{0} {1}", "Current Status:",
-        "UnLocked" if current == SensorTemperatureStatus.Unlocked 
+        "UnLocked" if current == SensorTemperatureStatus.Unlocked
         else "Locked"))
     return current
 
-def get_status_temp():    
+def get_status_temp():
     current = experiment.GetValue(CameraSettings.SensorTemperatureStatus)
-    
+
     t_status  = (String.Format(
-        "{0}", 
-        "UnLocked" if current == SensorTemperatureStatus.Unlocked 
+        "{0}",
+        "UnLocked" if current == SensorTemperatureStatus.Unlocked
         else "Locked"))
-        
+
     return t_status
 
 
-def set_value(setting, value):    
+def set_value(setting, value):
     # Check for existence before setting
     # gain, adc rate, or adc quality
     if experiment.Exists(setting):
@@ -135,12 +123,12 @@ def device_found():
         if (device.Type == DeviceType.Camera):
             return True
             print("Camera not found. Please add a camera and try again.")
-    return False  
+    return False
 
 def experiment_completed(sender, evernt_args):
     print('..acq completed')
     acquireCompleted.Set()
-    
+
 
 def AcquireAndLock(name, cw=700.0):
     print('acq...', end='')
@@ -149,13 +137,13 @@ def AcquireAndLock(name, cw=700.0):
                                              ,   cw)
     experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
     experiment.Acquire()
-    acquireCompleted.WaitOne()  
+    acquireCompleted.WaitOne()
 
 
 ################ activate dummy camera activation
 
 # Create the LightField Application (true for visible)
-# The 2nd parameter forces LF to load with no experiment 
+# The 2nd parameter forces LF to load with no experiment
 auto = Automation(True, List[String]())
 
 # Get experiment object
@@ -178,15 +166,15 @@ AcquireAndLock('test_2')
 class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
     ''' data acqusition class for acquring temperature dependent
     PL data using the drywell'''
-    
+
     def __init__(self, start, end, step, cycles, port):
         super().__init__(self, start, end, step, cycles)
         Dry_well.__init__(self)
         DLnsec.__init__(self,port='COM7')
         Thermometer.__init(self)
         self.temp_index = self.temp_generator()
-    
-    
+
+
     def wait_for_x(self, sleep_seconds = 30, timeout_seconds= 3000):
         ''' funk is the instance of a clas whose component func's binary output you wait on,
         sleep_seconds = refresh period between queries
@@ -197,7 +185,7 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
         while count < timeout_seconds//sleep_seconds:
             if self.read_stability_status()== 0:
                 sleep(sleep_seconds)
-                count +=1 
+                count +=1
                 print(count)
             elif self.read_stability_status() ==1:
                     print('stable'); #print(time.monotonic()-to)
@@ -208,13 +196,13 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
                 print('unstable output', count)
         else:
             print('timed out')
-    
-    
-    
-    
+
+
+
+
     ############################ acqusition routines ###########
     ### looping over laser power at set temp
-    
+
 
     def loop_laser_power(self, set_point = 25, power_level= [10, 30, 50, 90, 30]):
         '''set_point default is 25C, it is the temp over which power dependence is measured
@@ -229,7 +217,7 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
                 fn = 'laser_power_'+str(p)+'_temp_'+str(str(self.read_temp()).replace('.',','))+'_'
                 #call camera fuction, pass fn a base filename
                 AcquireAndLock(fn)
-            
+
     ###################### temperature scanning loop
 
     ''' from cycling recall temperature generator and create a temp profile'''
@@ -263,8 +251,8 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
                 self.off()
             else:
                 print('temperature lock has been lost, terminating experiment')
-                
-                
+
+
         folder = Path("c:/nv_ensemble/")
         dates = str(date.today()).replace('-','')
         fnm = 'meta_data_'+dates+'_nv_exp_ESR_temp.txt'
@@ -272,9 +260,9 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
         df = pd.DataFrame(meta_data)
         df.columns=['time', 'monotonic_time','index', 'set_temp','temp', 'stability_index']
         df.to_csv(path_or_buf=file_open, sep=',')
-            
-    
-    ##### Ramp testing captures heating profile as drywell ramps from e.g.-30 C t0 25 C    
+
+
+    ##### Ramp testing captures heating profile as drywell ramps from e.g.-30 C t0 25 C
     def ramp_test(self,low_temp = -30,high_temp = 25, sleep_time = 900, acqs=10000 ):
         ''' low_temp sets the lower temp where the ramp starts with, default -30C
             high_temp set the upper bond on temp where the ramp ends, default 25 C
@@ -299,7 +287,7 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
                 AcquireAndLock(fn)
         else:
             print('camera temperature lock is lost')
-            
+
                 #sleep(1)
         # set new temp targe; note that default is 15 frames each of 1 sec
         if get_status()== 1:#'note: enter appropriate return for locked':
@@ -311,14 +299,14 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
                 AcquireAndLock(fn)
         else:
             print('lock has been lost, terminating experiment')
-            
+
             #sleep(1)
-            
-            
+
+
     def stability_analysis(self,n=100, t=25, delta_time=1, settling_time=900):
         '''this function acquires N number of spectra that will be used to anaylze
         ADEV profile over long time scales
-    
+
         n= number of spectra acquired
         t = temperature defalt 25 C
         delta_time =  time in between spectra
@@ -339,16 +327,16 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
             print('ccd out of temp lock')
 
 # =============================================================================
-# 
-# 
+#
+#
 # class Data_Acq_PL:
 #     ''' data acqusition class for acquring temperature dependent
 #     PL data using the drywell'''
-#     
+#
 #     ############################ acqusition routines ###########
 #     ### looping over laser power at set temp
-# 
-# 
+#
+#
 #     def loop_laser_power(set_point = 25, power_level= [10, 30, 50, 90, 30]):
 #         '''set_point default is 25C, it is the temp over which power dependence is measured
 #         power_level is list containing the percent power level of the laser used in the measurement '''
@@ -361,12 +349,12 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
 #             fn = 'laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
 #             #call camera fuction, pass fn a base filename
 #             spectroscopy.AcquireAndLock(fn)
-#             
+#
 #     ###################### temperature scanning loop
-# 
+#
 #     ''' from cycling recall temperature generator and create a temp profile'''
-# 
-# 
+#
+#
 #     def temperature_cycling(temp_index, meta_data=[],settling_time=900, laser_pow = 90):
 #         for i, t in enumerate(temp_index):
 #             print('index', i ); #sleep(1)
@@ -397,7 +385,7 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
 #                 else:
 #                     print('temperature lock has been lost, terminating experiment')
 #                     break
-#                 
+#
 #         folder = Path("c:/nv_ensemble/")
 #         date = str(date.today()).replace('-','')
 #         fnm = 'meta_data_'+date+'_nv_exp_ESR_temp.txt'
@@ -405,9 +393,9 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
 #         df = pd.DataFrame(meta_data)
 #         df.columns=['time', 'monotonic_time','index', 'set_temp','temp', 'stability_index']
 #         df.to_csv(path_or_buf=file_open, sep=',')
-#             
-#     
-#     ##### Ramp testing captures heating profile as drywell ramps from e.g.-30 C t0 25 C    
+#
+#
+#     ##### Ramp testing captures heating profile as drywell ramps from e.g.-30 C t0 25 C
 #     def ramp_test(low_temp = -30,high_temp = 25, sleep_time = 900, acqs=10000 ):
 #         ''' low_temp sets the lower temp where the ramp starts with, default -30C
 #             high_temp set the upper bond on temp where the ramp ends, default 25 C
@@ -448,12 +436,12 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
 #                 print('lock has been lost, terminating experiment')
 #                 break
 #             #sleep(1)
-#             
-#             
+#
+#
 #     def stability_analysis(n=100, t=25, delta_time=1):
 #         '''this function acquires N number of spectra that will be used to anaylze
 #         ADEV profile over long time scales
-#     
+#
 #         n= number of spectra acquired
 #         t = temperature defalt 25 C
 #         delta_time =  time in between spectra
@@ -469,7 +457,7 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
 #             ''' put in call to load a different camera setting'''
 #             spectroscopy.AcquireAndLock(fn)
 #             sleep(delta_time)
-# 
-# 
-# 
+#
+#
+#
 # =============================================================================

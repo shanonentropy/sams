@@ -4,12 +4,18 @@ Created on Tue Oct 10 16:13:53 2023
 
 @author: zahmed
 
-drywell testing under SAMS logic
+drywell testing under SAMS logic: better code is in the 
+instrumental control folder
+
+Delete this file from the repo 11/7/2023
 
 
 rewrite this code to include logging capability. I need to do a 
 long-term valuation of the wait_for module to make sure it is working 
 as intended and catching the non-sensical out of 
+
+
+Te
 
 
 

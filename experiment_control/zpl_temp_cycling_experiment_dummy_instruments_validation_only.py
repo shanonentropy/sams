@@ -5,13 +5,14 @@ Created on Wed Sep 13 14:52:01 2023
 @author: zahmed
 this code will be be used to control the PL spectrocopy experiment
 it control the camera, spectrometer, laser and drywell.
-"""
 
+code has been updated to run 
+"""
 #import modules
-from time import sleep, date
-from waiting import wait
-import numpy as np
 import time
+from time import sleep
+from datetime import date
+import numpy as np
 from pathlib import Path
 import clr # Import the .NET class library
 import os # Import os module
@@ -100,6 +101,17 @@ def get_status():
     
     return current
 
+def get_status_temp():    
+    current = experiment.GetValue(CameraSettings.SensorTemperatureStatus)
+    
+    t_status  = (String.Format(
+        "{0}", 
+        "UnLocked" if current == SensorTemperatureStatus.Unlocked 
+        else "Locked"))
+        
+    return t_status
+
+
 def set_value(setting, value):    
     # Check for existence before setting
     # gain, adc rate, or adc quality
@@ -121,11 +133,11 @@ def experiment_completed(sender, evernt_args):
     acquireCompleted.Set()
     
 
-def AcquireAndLock(name):
+def AcquireAndLock(name, cw = 700.0):
     print('acq...', end='')
     name += '{0:06.2f}ms.CWL{1:07.2f}nm'.format(\
                                                 experiment.GetValue(CameraSettings.ShutterTimingExposureTime)\
-                                             ,   700.0)
+                                             ,   cw)
     experiment.SetValue(ExperimentSettings.FileNameGenerationBaseFileName, name)
     experiment.Acquire()
     acquireCompleted.WaitOne()  
@@ -158,7 +170,8 @@ current_units = drywell.read_unit()
 ramp_rate = drywell.read_rate()
 print(current_temp, current_ramp_rate, current_units)
 set_point = 25
-drywell.set_output(1)
+#rywell.set_output(1)
+drywell.set_temp(set_point)
 wait_for_x(drywell, sleep_seconds =30, timeout_seconds=2000)
 #wait_for_drywell(drywell, sleep_seconds =30, timeout_seconds=2000)
 drywell.beep()
@@ -186,11 +199,11 @@ experiment = auto.LightFieldApplication.Experiment
 acquireCompleted = AutoResetEvent(False)
 
 # Load experiment i.e. pre-configured settings
-exp = 'dummy_camera'     #'automated_pl_exp_mod' # dummy camera 'xxxx'
+exp = 'demo_experiment'     #'automated_pl_exp_mod' # dummy camera 'xxxx'
 experiment.ExperimentCompleted += experiment_completed
 
 
-AcquireAndLock('test_2')
+AcquireAndLock('test_nov7')
 
 # =============================================================================
 # acqusition routines
@@ -203,54 +216,60 @@ def loop_laser_power(set_point = 25, power_level= [30, 50, 90, 30]):
     #drywell = dry_well()
     #set_point = 25.0
     drywell.set_temp(set_point); #drywell.set_output(1);
-    wait(drywell.read_stability_status, sleep_seconds =20, timeout_seconds=3600)
+    wait_for_x(drywell, sleep_seconds =20, timeout_seconds=3600)
     drywell.beep()
-    for p in power_level:
-        laser.set_power(p); print('now in laser loop with power at {} percent'.format(p))
-        #set filename
-        fn = 'laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
-        #call camera fuction, pass fn a base filename
-        AcquireAndLock(fn)
+    if get_status_temp()== 'Locked':  #'note: locked value in spectroscopy appears to be 1'
+        for p in power_level:
+            laser.set_power(p); print('now in laser loop with power at {} percent'.format(p))
+            #set filename
+            fn = 'laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
+            #call camera fuction, pass fn a base filename
+            AcquireAndLock(fn)
+    else:
+        print('temperature lock lost, terminate experiment')
+        
 
 
-def temperature_cycling(temp_index, meta_data=[],settling_time=900):
+def temperature_cycling(temp_index, meta_data=[],settling_time=10):
     ''' temperature scanning loop, from cycling recall temperature generator 
     and create a temp profile'''
 
     for i in range(len(temp_index)):
-        print('index', i ); #sleep(1)
-        #current_temp = drywell.read_temp()
-        drywell.set_temp((temp_index[i]))
-        print('set temp is:',drywell.read_set_temp()); print('current temp is:',drywell.read_temp());
-        wait(drywell.read_stability_status, sleep_seconds =20, timeout_seconds=2000)
-        drywell.beep()
-        print(drywell.read_stability_status()); sleep(settling_time)
-        print('now stable at ', drywell.read_temp()); print(drywell.read_stability_status());
-        ### turn on laser
-        while True:
-            if get_status()== 'note: enter appropriate return for locked':
-                laser.on(); sleep(5)
-                laser.set_power(90); sleep(60)
-                p = laser.get_power()
-                #### call camera func, use fn to set filename base
-                fn = 'laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
+        if get_status_temp()== 'Locked':
+            print('camera is locked, proceeding with exp')      
+            print('index', i ); #sleep(1)
+            #current_temp = drywell.read_temp()
+            drywell.set_temp((temp_index[i]))
+            print('set temp is:',drywell.read_set_temp()); print('current temp is:',drywell.read_temp());
+            wait_for_x(drywell, sleep_seconds =20, timeout_seconds=2000)
+            drywell.beep()
+            print(drywell.read_stability_status()); sleep(settling_time)
+            print('now stable at ', drywell.read_temp()); print(drywell.read_stability_status());
+            ### turn on laser
+            #laser.on(); 
+            sleep(5)
+            #laser.set_power(90); sleep(60)
+            p = laser.get_power()
+            #### call camera func, use fn to set filename base
+            fn = 'laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
+            
+            ''' this line exists so I will have a history of drywell's behaviour over the experiment
+            need to add keysight thermometer readout (temp and resistance) to this file and replace drywell temp with
+            check thermometer temp in the file'''
+            
+            meta_data.append([time.time(), i, drywell.read_temp(), drywell.read_stability_status()])
+            #### call camera func, use fn to set filename base
+            fn = 'laser_power_'+str(p)+'_drywelltemp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
+            AcquireAndLock(fn)
+            #laser.set_power(10); 
+            sleep(5)
+            #laser.off()
+        else:
+            print('temperature lock has been lost, terminating experiment')
                 
-                ''' this line exists so I will have a history of drywell's behaviour over the experiment
-                need to add keysight thermometer readout (temp and resistance) to this file and replace drywell temp with
-                check thermometer temp in the file'''
-                
-                meta_data.append([time.time(), i, drywell.read_temp(), drywell.read_stability_status()])
-                #### call camera func, use fn to set filename base
-                fn = 'laser_power_'+str(p)+'_drywelltemp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
-                AcquireAndLock(fn)
-                laser.set_power(10); sleep(30)
-                laser.off()
-            else:
-                print('temperature lock has been lost, terminating experiment')
-                break
-    folder = Path("c:/nv_ensemble/")
+    folder = Path("c:/sams/saved_data")
     dates = str(date.today()).replace('-','')
-    fnm = 'meta_data_'+dates+'_nv_exp_ESR_temp.txt'
+    fnm = 'meta_data_'+dates+'_nv_exp_test_temp.txt'
     file_open = folder / fnm
     df = pd.DataFrame(meta_data)
     df.columns=['time', 'index', 'temp', 'stability_index']
@@ -270,41 +289,39 @@ def ramp_test(low_temp = -30,high_temp = 25, sleep_time = 900, acqs=10000 ):
         acqs is the number of acqustion to acquired during the ramp
         note: pre-ramp is fixed at 100
     '''
-    set_point = low_temp; #print(drywell.read_output());
-    wait(drywell.read_stability_status, sleep_seconds =20, timeout_seconds=6000)
+    drywell.set_temp(low_temp)
+    wait_for_x(drywell, sleep_seconds =20, timeout_seconds=6000)
     drywell.beep()
+    #insert print statement reminding user that system is in sleep mode for equilibriation
     sleep(sleep_time)
     #loop_laser_power()
     ####### call camera to record 15 min worth of data at set temp
-    ''' put in call to load a different camera setting'''
-    exp = 'automated_pl_exp_mod' # dummy camera 'xxxx'
-    experiment.ExperimentCompleted += experiment_completed
+    ''' put in call to load a different camera setting, if possible, otherwise delete'''
+    #exp =   'demo_experiment' #'automated_pl_exp_mod' # dummy camera 'xxxx'
+    #experiment.ExperimentCompleted += experiment_completed
     AcquireAndLock('test_loading')
-    while True:
-        if get_status()== 'note: enter appropriate return for locked':
-            p = laser.get_power()
-            for x in range(100):
-                fn = 'heat_ramp_'+drywell.read_rate()+'deg_per_min_'+'laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
-                spectroscopy.AcquireAndLock(fn)
-        else:
-            print('camera temperature lock is lost')
-            break
-            #sleep(1)
-    # set new temp targe; note that default is 15 frames each of 1 sec
-    while True:
-        if spectroscopy.get_status()== 1: #'note: enter appropriate return for locked':
-            drywell.set_temp(25);
-            p = laser.get_power()
-            for x in range(acqs):
-                fn = 'heat_ramp_'+drywell.read_rate()+'_per_min_laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
-                AcquireAndLock(fn)
-        else:
-            print('lock has been lost, terminating experiment')
-            break
+    '''acquire baseline data at low temp'''
+    if get_status_temp()== 'Locked':
+        p = laser.get_power()
+        for x in range(100):
+            fn = 'heat_ramp_'+drywell.read_rate()+'deg_per_min_'+'laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
+            AcquireAndLock(fn)
+    else:
+        print('camera temperature lock is lost')
         #sleep(1)
+    '''set new temp target; note that default is 15 frames each of 1 sec'''
+    if get_status_temp()== 'Locked':
+        drywell.set_temp(25);
+        p = laser.get_power()
+        for x in range(acqs):
+            fn = 'heat_ramp_'+drywell.read_rate()+'_per_min_laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
+            AcquireAndLock(fn)
+    else:
+        print('lock has been lost, terminating experiment')
+    #sleep(1)
 
 
-def stability_analysis(n=100, t=25, delta_time=1):
+def stability_analysis(n=100, t=25, delta_time=1, settling_time=10): #change settling_time to 900s
     '''this function acquires N number of spectra that will be used to anaylze
     ADEV profile over long time scales
 
@@ -312,17 +329,21 @@ def stability_analysis(n=100, t=25, delta_time=1):
     t = temperature defalt 25 C
     delta_time =  time in between spectra
     '''
-    exp = 'automated_pl_exp_mod' # dummy camera 'xxxx'
+    #exp = # 'automated_pl_exp_mod' # dummy camera 'xxxx'
     drywell.set_temp(t)
-    wait(drywell.read_stability_status, sleep_seconds =20, timeout_seconds=2000)
+    wait_for_x(drywell, sleep_seconds =20, timeout_seconds=2000)
     print(drywell.read_stability_status()); sleep(settling_time)
     print('now stable at ', drywell.read_temp()); print(drywell.read_stability_status());
-    for i in range(n):
-        print('at {} C stability run'.format(t), i)
-        fn = 'laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
-        ''' put in call to load a different camera setting'''
-        AcquireAndLock(fn)
-        sleep(delta_time)
+    while True:
+        if get_status_temp()== 'Locked':   
+            for i in range(n):
+                print('at {} C stability run'.format(t), i)
+                fn = 'laser_power_'+str(laser.get_power())+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
+                ''' put in call to load a different camera setting'''
+                AcquireAndLock(fn)
+                sleep(delta_time)
+        else:
+            print('temp lock broken')
 
 
 
@@ -337,7 +358,7 @@ def stability_analysis(n=100, t=25, delta_time=1):
 
 ''' we turn the laser on and set power to an initial value'''
 
-laser.set_power(90)
+#laser.set_power(90)
 
 ''' set drywell to room temp or some chosen value'''
 drywell.set_temp(25); drywell.beep()
@@ -346,12 +367,8 @@ drywell.set_temp(25); drywell.beep()
 ''' We start with power loop, using default settings '''
 
 # first we want to ensure that temp is locked
-while True:
-    if get_status()== 1:  #'note: locked value in spectroscopy appears to be 1'
-        loop_laser_power()
-    else:
-        print('temperature lock lost, terminate experiment')
-        break
+loop_laser_power()
+
 
 laser.set_power(10); sleep(60); laser.off()
 print('starting temp cycling')
@@ -359,41 +376,40 @@ print('starting temp cycling')
 
 ''' loop over a defined temp'''
 # print the proposed profile
-cycling(start=-30, stop=70, step=3, cycles=1).params()
+Cycling(start=25, stop=26, step=1, cycles=1).params()
 
 # setup the profile
-temp_index =  cycling(start=-30, stop=70, step=3, cycles=1).temperatures()
+temp_index =  Cycling(start=25, stop=26, step=1, cycles=1).temperatures()
 # this list will log meta deta for the thermal profile'''
 meta_data =[]
 
 #execute the temperature profile
-temperature_cycling(temp_index, meta_data)
+temperature_cycling(temp_index)
 
 ###################
 
 
 
-''' acquire stability data '''
+''' acquire stability data: rewrite this code to include get_status_temp call
+correctly'''
 
 
 # first we want to ensure that temp is locked
-while True:
-    if get_status()== 'note: enter appropriate return for locked':
-        stability_analysis()
-    else:
-        print('temperature lock lost, terminate experiment')
-        break
+if get_status_temp()== 'Locked':
+    stability_analysis()
+else:
+    print('temperature lock lost, terminate experiment')
 #
 
 ''' acquire ramp data '''
 
-# ramp_test()
+ramp_test()
 
 
 
 ''' turn the laser off'''
-laser.set_power(10); sleep(30); laser.off(); laser.set_mode('STOP')
+laser.shutof(); sleep(30); #laser.off(); laser.set_mode('STOP')
 laser.close()
 
 ''' turn the drywell off'''
-drywell.close()
+drywell.close_drywell()

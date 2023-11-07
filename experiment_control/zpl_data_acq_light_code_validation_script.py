@@ -13,6 +13,8 @@ import of spectroscopy class did not work
 
 import Data_Acq_Pl fails because it needs to inherent drywell which it doesn't recognize'
 
+
+delete this if the new data_acq_pl update works 
 """
 
 #import modules

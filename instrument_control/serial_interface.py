@@ -69,6 +69,19 @@ This program was developed with following python package versions.
 * pyserial          3.4
 * python            3.7.7
 * vs2015_runtime    14.16.27012
+
+
+ZA_mod
+NOTE TO SELF: to integrate into SAMS structure, the functions for the drywell 
+were re-named so as to allow unambigous calls when importing both the drywell
+and laser classes into the child class
+
+For now we will leave the arroyo alone as it will only be needed for the microscope
+and at that stage the drywell will not be needed anymore. 11/7/2023
+
+ 
+
+
 """
 
 import serial

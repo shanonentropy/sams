@@ -7,23 +7,27 @@ Created on Tue Oct 10 16:13:53 2023
 drywell testing under SAMS logic
 """
 
-#import modules
+# =============================================================================
+# import modules
+# =============================================================================
+
 from time import sleep
 import time
-from waiting import wait
-import numpy as np
+#import numpy as np
 from pathlib import Path
-import os # Import os module
-import pandas as pd
+#import pandas as pd
 import datetime, csv
 
 import sys # Import python sys module
 sys.path.append('c:\\sams\instrument_control')
 from drywell_interface import Dry_well # drywell control module
-from wait_for import wait_for_x, wait_for_drywell
+from wait_for import wait_for_x#, wait_for_drywell
 from temperature_generator import Cycling
-#from check_thermometer import temp_recorder, writer
-####### set drywell #######
+#from check_thermometer import Thermometer
+
+# =============================================================================
+# set drywell
+# =============================================================================
 
 drywell = Dry_well()
 print(drywell.read_stability_status())
@@ -44,43 +48,71 @@ drywell.beep()
 ### testing wait_for_drywell: explicitly calls drywell.read_stability_status() in the code 
 print(drywell.read_temp())
 
-########## drywell loop 
+
+# =============================================================================
+# instantiate a thermometer
+# =============================================================================
+
+# =============================================================================
+# therm = Thermometer()
+# therm.device_configure()
+# 
+# therm.print_resistance()
+# 
+# =============================================================================
+
+# =============================================================================
+# drywell loop 
+# =============================================================================
+
 ''' loop the drywell back and forth and see if the wait modules
 are working properly
 
 to do list:
-    *  connect check thermometer to the computer (see experimental_control folder 10/31)
+    *  connect check thermometer to the computer (device not recognized on workstation 11/6/2023)
     * test the code for check thermometer (done 10/31)
     * if nec., modify the code for check thermometer
+    ** since device is not recognized, data is collected seprately and then fused later on
     * proceed with the loop below 
         it should yield a bunch of files 
+        
+note changes: drywell.close --> drywell.close_drywell         
+        
 '''
 
+# set drywell to go to the lowest temp, set wait module to 4000 sec wait
+drywell.set_temp(-30)
+wait_for_x(drywell,timeout_seconds=4000)
 
 
-
-
+# =============================================================================
+# instantiate a temp cycling array
+# =============================================================================
 
 temps =  Cycling(start= -30, stop=70, step = 5, cycles= 1).temperatures()
 
-set_temp, tiempo = [],[]
-
-for setpoint in temps:
-    drywell.set_temp(setpoint); to = time.monotonic()
-    sleep(60)
-    wait_for_x(drywell,timeout_seconds=4000)
+set_temp, tiempo, unix_time, drywell_temp = [],[],[], []
+#check_therm = []
+for _, setpoint in enumerate(temps):
+    drywell.set_temp(setpoint); 
+    sleep(10)
+    wait_for_x(drywell,timeout_seconds=3000)
     #wait_for_drywell(drywell)
     drywell.beep()
-    #waiting only 10 sec so as to catch as much of the 
     print(drywell.read_temp())
-    set_temp.append(setpoint)
-    tiempo.append(time.monotonic()-to)
-    sleep(60)
+    to = time.monotonic()
+    while time.monotonic()-to<1800:
+        set_temp.append(setpoint)
+        tiempo.append(time.monotonic()-to)
+        unix_time.append(time.time())
+        drywell_temp.append(drywell.read_temp())
+        #check_therm.append(therm.read_resistance())
+        sleep(10)
     
-    
+# set drywell to return to 25 C, set wait time to be 4500 sec    
 drywell.set_temp(25)    
 wait_for_x(drywell, timeout_seconds=4500)  
-data =  zip( set_temp, tiempo)
+data =  zip(  tiempo, unix_time, set_temp, drywell_temp) #check_therm
 
 # path to where file with given name is stored
 folder = Path("c:/sams/saved_data")
@@ -90,15 +122,14 @@ file_open = folder / fn
 
 # write to file
 with open(file_open, 'w', newline='') as f:
-    fieldnames = ['set_temp', 'time'] #['index', 'elapsed_time', 'time', 'temp']
+    fieldnames = ['elapsed_time', 'unix_time', 'set_temp', 'drywell'] #'check_therm']
     data_writer = csv.DictWriter(f, fieldnames)
     data_writer.writeheader()
     
     for row in data:
-        data_writer.writerow({'set_temp':row[0], 'time': row[1] })
+        data_writer.writerow({'elapsed_time':row[0], 'unix_time': row[1], 'set_temp':row[2], 'drywell':row[3] }) # 'check_therm':row[4]
 
- 
-drywell.close()
+drywell.close_drywell()
     
 
   

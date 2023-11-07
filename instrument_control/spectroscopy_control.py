@@ -4,6 +4,12 @@ Created on Wed Sep 13 16:05:33 2023
 
 @author: zahmed
 set of functions to control spectrometer and camera functions
+
+currently not needed as all these funcs have been incorporated into 
+data_acq_pl file
+
+
+
 """
 ################ activate  camera activation
 
@@ -51,6 +57,19 @@ def get_status():
         "UnLocked" if current == SensorTemperatureStatus.Unlocked 
         else "Locked"))
     return current
+
+def get_status_temp():    
+    current = experiment.GetValue(CameraSettings.SensorTemperatureStatus)
+    
+    t_status  = (String.Format(
+        "{0}", 
+        "UnLocked" if current == SensorTemperatureStatus.Unlocked 
+        else "Locked"))
+        
+    return t_status
+
+
+
 
 def set_value(setting, value):    
     # Check for existence before setting

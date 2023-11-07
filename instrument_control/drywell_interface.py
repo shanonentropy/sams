@@ -34,6 +34,17 @@ Dependencies:
 - pyserial          3.4
 - vs2015_runtime    14.16.27012      
 - dpython-dateutil  2.8.1
+
+
+
+@ZA note: to resolve class inheretance issues in SAMS logic structure
+the following drywell func where renamed here:
+    
+    close           -> close_drywell
+    read_resistance -> read_resistance_drywell
+
+
+
 """
 
 import serial
@@ -103,7 +114,7 @@ class Dry_well(object):
         return 
 
 
-    def close(self):
+    def close_drywell(self):
         """ Closes serial connection with dry well """
         self.ser.close()
         sleep(0.1)
@@ -125,7 +136,7 @@ class Dry_well(object):
         return(temp)
  
 
-    def read_resistance(self):
+    def read_resistance_drywell(self):
         """ Queries control resistance returns float in ohms """
         res = float(self.write_command("SOUR:SENS:DAT? RES "))
         return(res)

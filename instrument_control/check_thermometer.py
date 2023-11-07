@@ -32,11 +32,9 @@ class Thermometer:
         #rest the device
         self.dmm.write("*RST")
         #configure to measure resistnace/voltage
-        self.dmm.write("*RST")  #dmm.write(":CONF:VOLT:DC")
+        self.dmm.write(":CONF:RES")  #dmm.write(":CONF:VOLT:DC")
         # set range to auto
         self.dmm.write(":RES:RANG:AUTO:ON")
-        #set the integration time to 1 sec for resistance/ for voltage 10 cycles
-        self.dmm.write(":RES:APER 1") #dmm.write(":CONF:VOLT:DC")
         # set source trig to immediate
         self.dmm.write(":TRIG:SOUR IMM")
         #set num of readings to 5
