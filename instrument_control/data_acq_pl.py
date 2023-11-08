@@ -30,11 +30,11 @@ import clr # Import the .NET class library
 import sys # Import python sys module
 import os # Import os module
 
-sys.path.appen('c:/sams/instrument_control')
+sys.path.append('c:/sams/instrument_control')
 from drywell_interface import Dry_well
 from dlnsec import DLnsec
-from check_thermometer import Thermometer
-from time import time, sleep
+#from check_thermometer import Thermometer
+from time import time, sleep, monotonic
 from temperature_generator import Cycling
 from pathlib import Path
 from datetime import date,datetime
@@ -164,27 +164,27 @@ experiment = auto.LightFieldApplication.Experiment
 acquireCompleted = AutoResetEvent(False)
 
 # Load experiment i.e. pre-configured settings
-exp = 'automated_pl_exp_mod' # 'demo_experiment'
+exp =  'demo_experiment'     #'automated_pl_exp_mod' # 
 experiment.Load(exp)
 experiment.ExperimentCompleted += experiment_completed
 
 
-AcquireAndLock('test_2')
+AcquireAndLock('test__demo_dq')
 
 
 
 
 
-class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
+class Data_Acq_PL(Cycling, Dry_well, DLnsec): #, Thermometer
     ''' data acqusition class for acquring temperature dependent
     PL data using the drywell'''
 
-    def __init__(self, start, end, step, cycles, port):
-        super().__init__(self, start, end, step, cycles)
+    def __init__(self, start, end, step, cycles, port='COM7'):
+        Cycling.__init__(self, start, end, step, cycles)
         Dry_well.__init__(self)
-        DLnsec.__init__(self,port='COM7')
-        Thermometer.__init(self)
-        self.temp_index = self.temp_generator()
+        DLnsec.__init__(self, port= port)
+        #Thermometer.__init__(self)
+        self.temp_index = self.temperatures()
 
 
     def wait_for_x(self, sleep_seconds = 30, timeout_seconds= 3000):
@@ -219,14 +219,14 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
     def loop_laser_power(self, set_point = 25, power_level= [10, 30, 50, 90, 30]):
         '''set_point default is 25C, it is the temp over which power dependence is measured
         power_level is list containing the percent power level of the laser used in the measurement '''
-        self.set_temp(self.set_point); #drywell.set_output(1);
+        self.set_temp(set_point); #drywell.set_output(1);
         self.wait_for_x(sleep_seconds =20, timeout_seconds=3600)
         self.beep()
         if get_status_temp()=='Locked':
-            for p in self.power_level:
+            for p in power_level:
                 self.set_power(p); print('now in laser loop with power at {} percent'.format(p))
                 #set filename
-                fn = 'laser_power_'+str(p)+'_temp_'+str(str(self.read_temp()).replace('.',','))+'_'
+                fn = 'laser_power_'+str(p)+'_drywell_temp_'+str(str(self.read_temp()).replace('.',','))+'_'
                 #call camera fuction, pass fn a base filename
                 AcquireAndLock(fn)
 
@@ -235,13 +235,14 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
     ''' from cycling recall temperature generator and create a temp profile'''
 
 
-    def temperature_cycling(self,temp_index, meta_data=[],settling_time=900, laser_pow = 90):
+    def temperature_cycling(self, meta_data=[],settling_time=900, laser_pow = 90):
+        #import time
         for i, t in enumerate(self.temp_index):
             print('index {}, temp {}'.format( i,t )); #sleep(1)
             #current_temp = self.read_temp()
             self.set_temp(t)
-            print('set temp is:',self.set_temp()); print('current temp is:', self.read_temp());
-            self.wait_for_x(self, sleep_seconds =20, timeout_seconds=2000)
+            print('set temp is:',t); print('current temp is:', self.read_temp());
+            self.wait_for_x(sleep_seconds =20, timeout_seconds=3600)
             self.beep()
             print(self.read_stability_status()); sleep(settling_time)
             print('now stable at ', self.read_temp()); print(self.read_stability_status());
@@ -255,9 +256,11 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
                 ''' this line exists so I will have a history of drywell's behaviour over the experiment
                 need to add keysight thermometer readout (temp and resistance) to this file and replace drywell temp with
                 check thermometer temp in the file'''
-                meta_data.append([time.time(), time.monotonic(), i, t, self.read_temp(), self.read_stability_status()])
+                m_time = time()
+                mono_time = monotonic()
+                meta_data.append([m_time, mono_time, i, t, self.read_temp(), self.read_stability_status()])
                 #### call camera func, use fn to set filename base
-                fn = 'laser_power_'+str(p)+'_drywelltemp_'+str(str(self.read_temp()).replace('.',','))+'_'
+                fn = 'laser_power_'+str(p)+'_drywell_temp_'+str(str(self.read_temp()).replace('.',','))+'_'
                 AcquireAndLock(fn)
                 self.set_power(10); sleep(30)
                 self.off()
@@ -265,17 +268,17 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
                 print('temperature lock has been lost, terminating experiment')
 
 
-        folder = Path("c:/nv_ensemble/")
+        folder = "c:/sams/saved_data/"
         dates = str(date.today()).replace('-','')
-        fnm = 'meta_data_'+dates+'_nv_exp_ESR_temp.txt'
-        file_open = folder / fnm
+        fnm = 'meta_data_'+dates+'_pl_exp.txt'
+        file_open = folder+fnm
         df = pd.DataFrame(meta_data)
         df.columns=['time', 'monotonic_time','index', 'set_temp','temp', 'stability_index']
         df.to_csv(path_or_buf=file_open, sep=',')
 
 
     ##### Ramp testing captures heating profile as drywell ramps from e.g.-30 C t0 25 C
-    def ramp_test(self,low_temp = -30,high_temp = 25, sleep_time = 900, acqs=10000 ):
+    def ramp_test(self,low_temp = -30,high_temp = 25, sleep_time = 900, acqs=10000, baseline_acqs=100 ):
         ''' low_temp sets the lower temp where the ramp starts with, default -30C
             high_temp set the upper bond on temp where the ramp ends, default 25 C
             sleep_time is the equilibrition time before the data acqsition starts, defualt is 900s
@@ -283,7 +286,7 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
             note: pre-ramp is fixed at 100
         '''
         self.set_temp(low_temp)
-        self.wait_for_x(self, sleep_seconds =20, timeout_seconds=6000)
+        self.wait_for_x(sleep_seconds =20, timeout_seconds=4000)
         self.beep()
         sleep(sleep_time)
         #loop_laser_power()
@@ -294,19 +297,19 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
         #AcquireAndLock('test_loading')
         if get_status_temp()== 'Locked': #'note: enter appropriate return for locked':
             p = self.get_power()
-            for x in range(100):
-                fn = 'heat_ramp_'+self.read_rate()+'deg_per_min_'+'laser_power_'+str(p)+'_temp_'+str(str(self.read_temp()).replace('.',','))+'_'
+            for x in range(baseline_acqs):
+                fn = 'heat_ramp_1_deg_per_min_'+'laser_power_'+str(p)+'_temp_'+str(str(self.read_temp()).replace('.',','))+'_'
                 AcquireAndLock(fn)
         else:
             print('camera temperature lock is lost')
 
         # set new temp target; 
-        if get_status()== 1:#'note: enter appropriate return for locked':
-            self.set_temp(25);
+        if get_status_temp()== 'Locked':#'note: enter appropriate return for locked':
+            self.set_temp(high_temp);
             p = self.get_power()
             for x in range(acqs):
                 '''check what the output of the drywell.read_rate looks like and if it needs to be reformatted.'''
-                fn = 'heat_ramp_'+self.read_rate()+'_per_min_laser_power_'+str(p)+'_temp_'+str(str(self.read_temp()).replace('.',','))+'_'
+                fn = 'heat_ramp_1_deg_per_min_laser_power_'+str(p)+'_temp_'+str(str(self.read_temp()).replace('.',','))+'_'
                 AcquireAndLock(fn)
         else:
             print('lock has been lost, terminating experiment')
@@ -324,7 +327,7 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec, Thermometer):
         '''
         #exp = 'automated_pl_exp_mod' # dummy camera 'xxxx'
         self.set_temp(t)
-        self.wait_for_x(self, sleep_seconds =20, timeout_seconds=3000)
+        self.wait_for_x(sleep_seconds =20, timeout_seconds=3600)
         print(self.read_stability_status()); sleep(settling_time)
         print('now stable at ', self.read_temp()); print(self.read_stability_status());
         if get_status_temp()=='Locked':

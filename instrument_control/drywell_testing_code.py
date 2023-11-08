@@ -81,7 +81,7 @@ note changes: drywell.close --> drywell.close_drywell
 '''
 
 # set drywell to go to the lowest temp, set wait module to 4000 sec wait
-drywell.set_temp(-30)
+drywell.set_temp(25)
 wait_for_x(drywell,timeout_seconds=4000)
 
 
@@ -89,7 +89,7 @@ wait_for_x(drywell,timeout_seconds=4000)
 # instantiate a temp cycling array
 # =============================================================================
 
-temps =  Cycling(start= -30, stop=70, step = 5, cycles= 1).temperatures()
+temps =  Cycling(start= 25, stop=27, step = 5, cycles= 1).temperatures()
 
 set_temp, tiempo, unix_time, drywell_temp = [],[],[], []
 #check_therm = []
@@ -101,7 +101,7 @@ for _, setpoint in enumerate(temps):
     drywell.beep()
     print(drywell.read_temp())
     to = time.monotonic()
-    while time.monotonic()-to<1800:
+    while time.monotonic()-to<100:
         set_temp.append(setpoint)
         tiempo.append(time.monotonic()-to)
         unix_time.append(time.time())
@@ -117,7 +117,7 @@ data =  zip(  tiempo, unix_time, set_temp, drywell_temp) #check_therm
 # path to where file with given name is stored
 folder = Path("c:/sams/saved_data")
 date_today =  datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S") #str(date.today()).replace('-','')
-fn = 'drywell_validation_test'+date_today+'_time_to_settle_as_rep_by_drywell.txt'
+fn = 'drywell_validation_test'+date_today+'_time_to_settle_as_rep_by_drywell_post_pull.txt'
 file_open = folder / fn
 
 # write to file

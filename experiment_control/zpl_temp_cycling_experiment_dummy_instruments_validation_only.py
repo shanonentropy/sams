@@ -267,10 +267,11 @@ def temperature_cycling(temp_index, meta_data=[],settling_time=10):
         else:
             print('temperature lock has been lost, terminating experiment')
 
+    #from pathlib import Path    
     folder = Path("c:/sams/saved_data")
     dates = str(date.today()).replace('-','')
     fnm = 'meta_data_'+dates+'_nv_exp_test_temp.txt'
-    file_open = folder / fnm
+    file_open = folder+fnm
     df = pd.DataFrame(meta_data)
     df.columns=['time', 'index', 'temp', 'stability_index']
     df.to_csv(path_or_buf=file_open, sep=',')
@@ -304,18 +305,20 @@ def ramp_test(low_temp = -30,high_temp = 25, sleep_time = 900, acqs=10000 ):
     if get_status_temp()== 'Locked':
         p = laser.get_power()
         for x in range(100):
-            fn = 'heat_ramp_'+drywell.read_rate()+'deg_per_min_'+'laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
+            fn = 'heat_ramp_1_deg_per_min_'+'laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
             AcquireAndLock(fn)
     else:
         print('camera temperature lock is lost')
         #sleep(1)
     '''set new temp target; note that default is 15 frames each of 1 sec'''
+    print('get ready to ramp up')
     if get_status_temp()== 'Locked':
-        drywell.set_temp(25);
+        drywell.set_temp(high_temp);
         p = laser.get_power()
         for x in range(acqs):
-            fn = 'heat_ramp_'+drywell.read_rate()+'_per_min_laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
+            fn = 'heat_ramp_1_deg_per_min_laser_power_'+str(p)+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
             AcquireAndLock(fn)
+            print(drywell.read_temp())
     else:
         print('lock has been lost, terminating experiment')
     #sleep(1)
@@ -334,16 +337,15 @@ def stability_analysis(n=100, t=25, delta_time=1, settling_time=10): #change set
     wait_for_x(drywell, sleep_seconds =20, timeout_seconds=2000)
     print(drywell.read_stability_status()); sleep(settling_time)
     print('now stable at ', drywell.read_temp()); print(drywell.read_stability_status());
-    while True:
-        if get_status_temp()== 'Locked':
-            for i in range(n):
-                print('at {} C stability run'.format(t), i)
-                fn = 'laser_power_'+str(laser.get_power())+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
-                ''' put in call to load a different camera setting'''
-                AcquireAndLock(fn)
-                sleep(delta_time)
-        else:
-            print('temp lock broken')
+    if get_status_temp()== 'Locked':
+        for i in range(n):
+            print('at {} C stability run'.format(t), i)
+            fn = 'laser_power_'+str(laser.get_power())+'_temp_'+str(str(drywell.read_temp()).replace('.',','))+'_'
+            ''' put in call to load a different camera setting'''
+            AcquireAndLock(fn)
+            sleep(delta_time)
+    else:
+        print('temp lock broken')
 
 
 
@@ -394,21 +396,18 @@ temperature_cycling(temp_index)
 correctly'''
 
 
-# first we want to ensure that temp is locked
-if get_status_temp()== 'Locked':
-    stability_analysis()
-else:
-    print('temperature lock lost, terminate experiment')
+stability_analysis(n=3)
+
 #
 
 ''' acquire ramp data '''
 
-ramp_test()
+ramp_test(low_temp=25, high_temp=27, sleep_time=100, acqs=10)
 
-
+drywell.set_temp(25)
 
 ''' turn the laser off'''
-laser.shutof(); sleep(30); #laser.off(); laser.set_mode('STOP')
+laser.shutdown(); sleep(30); #laser.off(); laser.set_mode('STOP')
 laser.close()
 
 ''' turn the drywell off'''
