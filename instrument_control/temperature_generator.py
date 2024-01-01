@@ -19,7 +19,7 @@ import numpy as np
 
 class Cycling:
 
-    def __init__(self, start=-30, stop=70, step=5, cycles =0):
+    def __init__(self, start=-30, stop=70, step=5, cycles =3):
         ''' base parameters  '
         start =  lowest temp, default is set to -30 C
         stop =   highest temp, default is set to 70 C

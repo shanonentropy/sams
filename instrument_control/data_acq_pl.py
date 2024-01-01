@@ -179,7 +179,7 @@ class Data_Acq_PL(Cycling, Dry_well, DLnsec): #, Thermometer
     ''' data acqusition class for acquring temperature dependent
     PL data using the drywell'''
 
-    def __init__(self, start, end, step, cycles, port='COM7'):
+    def __init__(self, start=-30, end=70, step=5, cycles=3, port='COM7'):
         Cycling.__init__(self, start, end, step, cycles)
         Dry_well.__init__(self)
         DLnsec.__init__(self, port= port)
