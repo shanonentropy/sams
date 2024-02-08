@@ -122,15 +122,37 @@ class processor(SortList):
 
     
     def covariance_spectral_plot(self):
-        ''' re-write this func taking advantage of df.corr()'''
+        ''' re-write this func to compute the sync and async 
+        components of the '''
         
             
             
-        return self.corr_list
-            
-    def corr2d(self):
-        '''implement sync and async 2d corr calculation'''
+        #return self.corr_list
+        pass    
+    def svd_data_matrix(self):
+        '''this function will assemble the all measurements into a data matrix to be used
+        in svd and pca computations'''
         pass
+    
+    
+    def svd_computation(self):
+        ''' this function will take in the data matrix from svd_data_matrix
+        and then compute the svd. User is expected to then decide where to 
+        place the trunation'''
+        
+        pass
+    
+    def svd_truncated(self):
+        '''this function implements a truncated svd compuation '''
+    
+        pass
+    
+    def latent_var_marg(self):
+        ''' interprets spectral diffusivity as variance of means to 
+        estimate strain/temp dependence'''
+        
+        passgit 
+    
     
     def gaussian(self, x_zpl, amp, u, std):
         ''' '''
@@ -299,6 +321,8 @@ class processor(SortList):
         self.dframe.to_csv('c:/sams/saved_data/'+export_name)
         
     
+    def export_dim_red_data:
+        
         
         
 

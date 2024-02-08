@@ -12,15 +12,18 @@ in a user-friendly format
 In a typical exploration mode we expect that one would want to import data 
 and then generate:
 
-1- pair plots (seaborn)
-2- heatmap (seaborn)
-3- kde plots (seaborn)
-4- 2d correlation plots
-5- linear regression including polynomial regression (scikit-learn)
-6- L1 and L2 regularization of regression
-7- residual plots
-8
-
+1-  pair plots (seaborn)
+2-  heatmap (seaborn)
+3-  kde plots (seaborn)
+4-  2d correlation plots
+5-  linear regression including polynomial regression (scikit-learn)
+6-  L1 and L2 regularization of regression
+7-  residual plots
+8-  PCA an SVD regression
+9-  kld and wasserstein plots
+10- kernel PCA
+11- random forest and decision tree
+12- autoencoder regressor
 
 
 """
