@@ -151,7 +151,7 @@ class processor(SortList):
         ''' interprets spectral diffusivity as variance of means to 
         estimate strain/temp dependence'''
         
-        passgit 
+        pass
     
     
     def gaussian(self, x_zpl, amp, u, std):
