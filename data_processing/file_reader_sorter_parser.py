@@ -86,12 +86,12 @@ class SortList():
         g = self.time_stamp.findall(x)[0].split(' ')
         year, month_str, day, hr = g[0], g[1],g[2], g[3]
         h, m, s = hr.split('_')
-        month_cal ={'Jan':1, 'Feb':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'Sept':9, 'Oct':10, 'Nov':11, 'Dec':12}
+        month_cal ={'January':1, 'Feburary':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'Sept':9, 'Oct':10, 'Nov':11, 'Dec':12}
         month = month_cal[month_str]
         mt = time.mktime(datetime.datetime(int(year), int(month), int(day), int(h),int(m),int(s)).timetuple())
         return mt
 
-    def strp_atr(x):
+    def strp_atr(self,x):
         lp = int(str(self.laser_power_id.findall(x)).split('_')[2])
         t = float((self.temperature.findall(x))[0].replace(',','.'))
         a = float(self.acq_lenth.findall(x)[0].replace('ms',''))
@@ -99,15 +99,18 @@ class SortList():
         g = self.time_stamp.findall(x)[0].split(' ')
         year, month_str, day, hr = g[0], g[1],g[2], g[3]
         h, m, s = hr.split('_')
-        month_cal ={'Jan':1, 'Feb':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'Sept':9, 'Oct':10, 'Nov':11, 'Dec':12}
+        #month_cal ={'Jan':1, 'Feb':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'Sept':9, 'Oct':10, 'Nov':11, 'Dec':12}
+        month_cal ={'January':1, 'Feburary':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'Sept':9, 'Oct':10, 'Nov':11, 'Dec':12}
         month = month_cal[month_str]
         mt = time.mktime(datetime.datetime(int(year), int(month), int(day), int(h),int(m),int(s)).timetuple())
         fnm = int(self.f_num.findall(x)[0].split('-')[1])
         #append to lists
         return mt,lp,t,a,b,g,fnm
-
-
-
+    
+    #def sorted_files(self):
+        ''' sort files by desired key'''
+        #self.sort_files = sorted(self.get_files(), key=self.strp_atr)
+        #return self.sort_files
 '''
 # Example usage
 lister = SortList()

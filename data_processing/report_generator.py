@@ -25,12 +25,49 @@ and then generate:
 11- random forest and decision tree
 12- autoencoder regressor
 
+# Example usage
+lister = SortList()
+files = lister.get_files()
+sorted_files = sorted(files, key=lister.temp)  
+# Replace `lister.temp` with your desired sorting function
+print(sorted_files)
+
+#pass the sorted/filetered list of files to the processor class
+
+sh =  processor()
+# then call routines of choice
+
 
 """
 import sys
 sys.path.append('c:/sams/data_processing/')
-from file_reader_forter_parser import SortList
+from file_reader_sorter_parser import SortList
 from classic_processor import processor
+
+# import data
+#lister = SortList()
+#files = lister.get_files()
+#sorted_files = sorted(files, key=lister.strp_atr)  
+
+''' drop any files with Frame-0001 in their names'''
+
+#filtered_files = [name for name in sorted_files if "Frame-00001" not in name]
+
+''' classic processor: ZPL [632, 642]  '''
+
+shredder =  processor()
+
+#file_list = shredder.get_files()
+sort_list = shredder.sorted_files()
+
+filt_list = shredder.filter_list('Frame-00001')
+
+
+
+
+
+
+
 
 
 

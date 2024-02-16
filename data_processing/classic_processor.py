@@ -72,7 +72,7 @@ class processor(SortList):
         
         '''
     
-    def __init__(self, nv_type = 'nv', nv_zpl = [634.25,640.25], nv0_zpl = [572.0, 578], huang_rhys = [649, 780] ):
+    def __init__(self, nv_type = 'nv', nv_zpl = [634.25,640.25], nv0_zpl = [572.0, 578], huang_rhys = [649, 780], k = 'Frame-00001' ):
         super().__init__()
         self.nv_zpl = nv_zpl
         self.nv0_zpl = nv0_zpl
@@ -86,8 +86,20 @@ class processor(SortList):
         self.width, self.debye_waller, self.frame_num = [], [],[]
         self.kld, self.wasserstein_dist =[], []
         self.amplitude2, self.peak_center2, self.width2 =[],[],[]
+        self.k = k
         
+        '''
+        
+    def sorted_files(self):
+        #sort files by desired key
+        self.sort_files = sorted(self.get_files(), key=self.strp_atr)
+        return self.sort_files'''
     
+    def filter_list(self):
+        ''' drop any files with a particular key in them in their names'''
+        self.filtered_files = [name for name in self.filenames if self.k not in name]
+        return self.filtered_files    
+
     def reference_spectra(self, ref_index =1):
         ''' returns the reference spectra for kl_div computation
         it is separated so I can call it once at the start of the computation
@@ -321,8 +333,9 @@ class processor(SortList):
         self.dframe.to_csv('c:/sams/saved_data/'+export_name)
         
     
-    def export_dim_red_data:
-        
+    def export_dim_red_data(self):
+        ''' export dimensionally reduced data set'''
+        pass
         
         
 
