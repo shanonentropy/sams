@@ -12,7 +12,7 @@ print(sorted_files)
 # to extract info from an individual file 
 t = lister.temp(files[0])
 
-
+in main processor self.filenames needs to be changed to handle filetered files
 
 
 """
@@ -86,6 +86,7 @@ class processor(SortList):
         self.width, self.debye_waller, self.frame_num = [], [],[]
         self.kld, self.wasserstein_dist =[], []
         self.amplitude2, self.peak_center2, self.width2 =[],[],[]
+        self.temps = []
         self.k = k
         
         '''
@@ -104,7 +105,7 @@ class processor(SortList):
         ''' returns the reference spectra for kl_div computation
         it is separated so I can call it once at the start of the computation
         loop and not have to reload it with each new spectra'''
-        df0=pd.read_csv(self.filenames[ref_index], sep=',', header = 0, engine='python')
+        df0=pd.read_csv(self.filtered_files[ref_index], sep=',', header = 0, engine='python')
         df0.sort_values(by='Wavelength', ascending=True)
         df0.drop_duplicates(subset='Wavelength', keep='first', inplace=True)
         self.spectrum1 = df0['Intensity']/np.sum(df0['Intensity'])
@@ -113,17 +114,20 @@ class processor(SortList):
     
         
        
-    def kl_divergence(self,spectrum2):
+    def kl_divergence(self,y):
         ''' spectrum1 is the reference file
-            spectrum2 is the current file in the loop being processed'''
-        #df0=pd.read_csv(self.filenames[1], sep=',', header = 0, engine='python')
-        #df0.sort_values(by='Wavelength', ascending=True)
-        #df0.drop_duplicates(subset='Wavelength', keep='first', inplace=True)
-        #self.spectrum1 = df0['Intensity']/np.sum(df0['Intensity'])        
+            spectrum2 is the current file in the loop being processed
+            
+            need to write the loop here♣
+            
+            '''
+        #df_=pd.read_csv(spectrum2, sep=',', header = 0, engine='python')
+        #df_.sort_values(by='Wavelength', ascending=True)
+        #df_.drop_duplicates(subset='Wavelength', keep='first', inplace=True)
         # Normalize the spectra
-        spectrum2 = spectrum2 / np.sum(spectrum2)
+        spectrum = y  / np.sum(y)
         # Calculate the logarithm of the ratio of the two spectra
-        ratio = np.log(self.spectrum1 / spectrum2)
+        ratio = np.log(self.spectrum1 / spectrum)
         # Multiply the ratio by the normalized spectra
         result = ratio * self.spectrum1
         # Sum the resulting values to obtain the KL divergence
@@ -227,7 +231,7 @@ class processor(SortList):
             zp=self.nv0_zpl
         ref = self.reference_spectra()
         
-        for f1 in self.filenames[:]:
+        for f1 in self.filtered_files[:]:
             print(f1)
             self.fnm.append(f1.split('\\')[1])
             self.frame_num.append(self.file_num(f1))
@@ -250,7 +254,7 @@ class processor(SortList):
             plt.title("ZPL data with baseline removed")
             self.time_step.append(self.time_st(f1))
             self.kl_divergence(y)
-            self.wasserstein_dist.append(wasserstein_distance(y, ref))
+            self.wasserstein_dist.append(wasserstein_distance(y, self.spectrum1))
             dx_val = (x[0]-x[50])/50
             area_zpl = trapz(y[(np.abs(x-zp[0])).argmin():(np.abs(x-zp[1])).argmin() ], dx= dx_val)
             area_psb = trapz(y[(np.abs(x-self.huang_rhys[0])).argmin():(np.abs(x-self.huang_rhys[1])).argmin() ], dx= dx_val)
@@ -264,6 +268,7 @@ class processor(SortList):
                  self.amplitude.append(self.amp);
                  lp = self.laser_power(f1)
                  self.laser_pow.append(lp)
+                 self.temps.append(self.temp(f1))
                  
             elif func == 'lorentzian':
                 self.popt, self.pcov = curve_fit(self.lorentzian,x_zpl, y_zpl_base, [4000, 637.5,1.5], maxfev=max_fev )
@@ -272,7 +277,8 @@ class processor(SortList):
                 self.width.append(self.FWHM);
                 self.amplitude.append(self.amp);
                 self.laser_pow.append(self.laser_power(f1))
-          
+                self.temps.append(self.temp(f1))
+                
             elif func == 'two_lorentzian' :
                 self.popt, self.pcov = curve_fit(self.two_lorentzian,x_zpl, y_zpl_base, [4000,5000, 636.5,637.5,1.5,1.5], maxfev=max_fev )
                 self.amp, self.amp2, self.center_wavelength,self.center_wavelength2 ,self.FWHM, self.FWHM = self.popt
@@ -284,6 +290,7 @@ class processor(SortList):
                 self.width2.append(self.FWHM2);
                 self.amplitude2.append(self.amp2);
                 self.laser_pow.append(self.laser_power(f1))
+                self.temps.append(self.temp(f1))
 
             elif func == 'two_gaussian':
                 self.popt, self.pcov = curve_fit(self.two_gaussian,x_zpl, y_zpl_base, [4000,5000, 636.5,637.5,1.5,1.5], maxfev=max_fev )
@@ -298,34 +305,36 @@ class processor(SortList):
                 self.amplitude2.append(self.amp2);
                 self.laser_pow.append(self.laser_power(f1))
                 self.laser_pow.append(self.laser_power(f1))
+                self.temps.append(self.temp(f1))
 
             else:
                 if 'sproot' not in sys.modules:
                     from scipy.interpolate import splrep, sproot
                 self.spline_fit(x_zpl, y_zpl_base)
+                #self.temps.append(self.temp(f1))
                 
     def create_dataframe(self, func = 'gaussian'):
         
         if func == 'gaussian' or func == 'lorentzian':
-            self.dframe = pd.DataFrame(list(zip(self.fnm, self.time_step,
+            self.dframe = pd.DataFrame(list(zip(self.fnm, self.time_step, self.temps,
                                        self.frame_num, self.laser_pow, self.amplitude, 
                                        self.peak_center, self.width, self.debye_waller, 
                                        self.kld, self.wasserstein_dist )))
-            self.dframe.columns = ['filename',  'time', 'frame_num', 'laser_power', 'amplitude',
+            self.dframe.columns = ['filename',  'time', 'temperature', 'frame_num', 'laser_power', 'amplitude',
                       'peak_center', 'width', 'debye_waller', 'kl_divergence', 'wasserstein']
         elif func == 'spline':
-            self.dframe = pd.DataFrame(list(zip(self.fnm, self.time_step,
+            self.dframe = pd.DataFrame(list(zip(self.fnm, self.time_step, self.temps,
                                        self.frame_num, self.laser_pow, self.amplitude, 
                                        self.peak_center, self.width, self.debye_waller, 
                                        self.kld, self.wasserstein_dist )))
-            self.dframe.columns = ['filename',  'time', 'frame_num', 'laser_power', 'amplitude',
+            self.dframe.columns = ['filename',  'time', 'temperature','frame_num', 'laser_power', 'amplitude',
                       'peak_center', 'width', 'debye_waller', 'kl_divergence', 'wasserstein']
         else:
-            self.dframe = pd.DataFrame(list(zip(self.fnm, self.time_step,
+            self.dframe = pd.DataFrame(list(zip(self.fnm, self.time_step, self.temps,
                                        self.frame_num, self.laser_pow, self.amplitude, 
                                        self.peak_center, self.width, self.debye_waller, 
                                        self.kld, self.wasserstein_dist, self.amplitude2, self.peak_center2, self.width2 )))
-            self.dframe.columns = ['filename',  'time', 'frame_num', 'laser_power', 'amplitude',
+            self.dframe.columns = ['filename',  'time','temperature', 'frame_num', 'laser_power', 'amplitude',
                       'peak_center', 'width', 'debye_waller', 'kl_divergence', 'wasserstein',
                       'amplitude2', 'peak_center2', 'width2']
         
