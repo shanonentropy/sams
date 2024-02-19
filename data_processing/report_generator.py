@@ -53,6 +53,7 @@ sh.export_dataframe()
 """
 import sys
 sys.path.append('c:/sams/data_processing/')
+#from file_reader_forter_parser import SortList
 from classic_processor import processor
 
 # import data
@@ -176,7 +177,7 @@ plt.title('Temperature vs FWHM')
 plt.legend(['up', 'down'])
 plt.show()
 
-plt.plot(shredder.dframe.temperature[:idx_ramp], shredder.dframe.peak_cener[:idx_ramp])
+plt.plot(shredder.dframe.temperature[:idx_ramp], shredder.dframe.peak_center[:idx_ramp])
 plt.plot(shredder.dframe.temperature[idx_ramp:], shredder.dframe.peak_center[idx_ramp:])
 plt.title('Temperature vs Peak Center')
 plt.legend(['up', 'down'])

@@ -250,8 +250,8 @@ class processor(SortList):
             base = peakutils.baseline(y_zpl, 1)
             y_zpl_base = y_zpl-base
             #plt.figure(figsize=(10,6))
-            plt.plot(x_zpl, y_zpl_base)
-            plt.title("ZPL data with baseline removed")
+            #plt.plot(x_zpl, y_zpl_base)
+            #plt.title("ZPL data with baseline removed")
             self.time_step.append(self.time_st(f1))
             self.kl_divergence(y)
             self.wasserstein_dist.append(wasserstein_distance(y, self.spectrum1))
@@ -268,7 +268,7 @@ class processor(SortList):
                  self.amplitude.append(self.amp);
                  lp = self.laser_power(f1)
                  self.laser_pow.append(lp)
-                 self.temps.append(self.temp(f1))
+                 self.temps.append(float(self.temp(f1)))
                  
             elif func == 'lorentzian':
                 self.popt, self.pcov = curve_fit(self.lorentzian,x_zpl, y_zpl_base, [4000, 637.5,1.5], maxfev=max_fev )
