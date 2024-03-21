@@ -28,7 +28,7 @@ from scipy.stats import wasserstein_distance
 from numpy import trapz
 import sys
 from file_reader_sorter_parser import SortList
-
+from scipy import linalg
 
 class processor(SortList):
     
@@ -118,7 +118,7 @@ class processor(SortList):
         ''' spectrum1 is the reference file
             spectrum2 is the current file in the loop being processed
             
-            need to write the loop here♣
+            need to write the loop here
             
             '''
         #df_=pd.read_csv(spectrum2, sep=',', header = 0, engine='python')
@@ -137,32 +137,167 @@ class processor(SortList):
         
 
     
-    def covariance_spectral_plot(self):
-        ''' re-write this func to compute the sync and async 
-        components of the '''
+    def twodim_corr_spect_plot(self, f_saveas = 'dummy_give_me_name'):
+        ''' func compute the sync and async 
+        components of the spectra as laid out in Noda's paper '''
+        freq_order = True  # if True sets the freq axis to run max to min 
+        mean_center = True
+        num_contour = 10
         
-            
-            
-        #return self.corr_list
-        pass    
-    def svd_data_matrix(self):
+        df_ss = self.df_s.T
+        df_ss.columns = df_ss.iloc[0, :]
+        spec = df_ss
+        #plot data for visual inspection
+        spec.T.iloc[:, 1:].plot(legend=None); plt.title('Spectroscopy Curves')
+        if freq_order: plt.xlim(max(spec.columns), min(spec.columns))
+        plt.show()
+        if mean_center:
+            spec = spec - spec.mean()
+        spec.T.iloc[:, 1:].plot(legend=None); plt.title('mean centered spectroscopy curves');plt.show()   
+        plt.show()
+
+        # create contour plots
+        def contourplot(spec):
+            x = spec.columns
+            y = spec.index
+            z = spec.values
+            zmax = np.abs(z).max()
+            plt.figure(figsize=(6, 6))
+            contour = plt.contour(x, y, z, num_contour, cmap="bwr", vmin=-1 * zmax, vmax=zmax) #coolwarm or seismic
+            plt.colorbar(contour)
+            if freq_order:
+                plt.xlim(max(x), min(x))
+                plt.ylim(max(y), min(y))     
+        # synchronous correlation
+        sync = pd.DataFrame(spec.values.T @ spec.values / (len(spec) - 1))
+        sync.index = spec.columns
+        sync.columns = spec.columns
+        sync = sync.T
+        # plot sync data
+        contourplot(sync)
+        plt.savefig(f_saveas+'synch', dpi=700)
+        #save data
+        sync.to_csv(f_saveas+"_sync.csv") # note: fn[:-4] drops the ".csv"
+        # Hilbert-Noda transformation matrix
+        noda = np.zeros((len(spec), len(spec)))
+        for i in range(len(spec)):
+            for j in range(len(spec)):
+                if i != j: noda[i, j] = 1 / np.pi / (j - i)
+                
+        # asynchronouse correlation
+        asynch = pd.DataFrame(spec.values.T @ noda @ spec.values / (len(spec) - 1))
+        asynch.index = spec.columns
+        asynch.columns = spec.columns
+        asynch = asynch.T
+        #plot async data
+        contourplot(asynch)
+        plt.savefig(f_saveas+'asynch', dpi=700)
+        #save data
+        asynch.to_csv(f_saveas+"_asynch.csv") # note: fn[:-4] drops the ".csv"
+ 
+    def svd_data_matrix(self, filter_or_no_filter = None, f_save = 'dummy'):
         '''this function will assemble the all measurements into a data matrix to be used
-        in svd and pca computations'''
-        pass
-    
-    
-    def svd_computation(self):
-        ''' this function will take in the data matrix from svd_data_matrix
-        and then compute the svd. User is expected to then decide where to 
-        place the trunation'''
+        in svd and pca computations. Notice the f_save =dummy is set such that
+        if I want to give a specific name to the data matrix file, it will be 
+        written in otherwise, it get the dummy prefix that I can overide later on'''
         
-        pass
+        if filter_or_no_filter == None:
+            self.fil_files = self.filenames
+        else:
+            self.fil_files = self.filtered_files
+        # read in the first file in the time sereis. 
+        # Store just the wavelength columns. 
+        #### note the column number changes from 1 to 4 if  
+        # All other files get appended to this file
+        self.df_s = pd.read_csv( self.fil_files[0], header = 0, encoding= 'unicode_escape', engine='python', sep=',',  usecols=['Wavelength'])
+        # read in files
+        read_line = np.arange(1, len(self.fil_files), 10) 
+        
+        for i in range(len(read_line[:])-1):
+            #print(read_line[i], read_line[i+1])
+            arr1 = read_line[i]
+            arr2 = read_line[i+1]
+            df_ = pd.read_csv( self.fil_files[1], header = 0, encoding= 'unicode_escape', engine='python', sep=',', usecols=['Wavelength'])
+            for j in range(arr1, arr2, 1):
+                #print(j)
+                df_t = pd.read_csv(self.fil_files[j], header = 0, encoding= 'unicode_escape', engine='python', usecols=['Intensity'])
+                #df_t.head(2)
+                df_ = pd.concat([df_, df_t], axis = 1)
+                #print(df_.head(2))
+            df_avg = df_.iloc[:, 1:].mean(axis=1)
+            self.df_s = pd.concat([self.df_s, df_avg], axis = 1)
+        
+        plt.plot(self.df_s.iloc[:, 0], self.df_s.iloc[:, 1::10]);
+        plt.xlabel('Wavelength (nm)')
+        plt.ylabel('Intensity (AU)')
+        # save data matrix
+        self.df_s.to_csv(f_save+'data_matrix')
+        ########################
     
-    def svd_truncated(self):
-        '''this function implements a truncated svd compuation '''
     
-        pass
+    def svd_computation(self, fullmatrix = False):
+        ''' this function will take in the data matrix from svd_data_matrix
+        and then compute the svd. Plots show the first 3 U, s and VT modes
+        
+        fullmatrix default is False, it sets the np.linalg.svd() full-matrix kw
+        to True if desired
+        
+        The user is expected to use S. Rajpal's code for Regression
+        using the data matrix saved in the earlier step
+        
+        '''
+              
+        # perform SVD
+        U, s, Vh = np.linalg.svd(self.df_s, full_matrices=True ) 
+        print('eigenmode matrix is {}'.format(U.shape))
+        print('singular value matrix is {}'.format(s.shape))
+        print('loading matrix is {}'.format(Vh.T.shape))
+        print('singular value matrix is {}'.format(s))
+        
+        plt.plot(U[:,0], 'm')
+        plt.title('Eigenmode #1')
+        plt.show()
+        plt.plot(U[:,1], 'orange')
+        plt.title('Eigenmode #2')
+        plt.show()
+        plt.plot(U[:,2], 'k')
+        plt.title('Eigenmode #3')
+        plt.show()
+        plt.plot(Vh[0,], 'm')
+        plt.title('Loading #1')
+        plt.show()
+        plt.plot(Vh[1,],'orange')
+        plt.title('Loading #2')
+        plt.show()
+        plt.plot(Vh[2,],'k')
+        plt.title('Loading #3')
+        plt.show()
+        
+        
+        
+        
+        
     
+    def svd_regression(self, target='temperature'):
+        '''this function takes in the entire dataset 
+        for svd compuation and regresses it against a target
+        NOT WORKING - NEED TO FIX IT 
+        '''
+        
+        x_tilda = np.linalg.pinv(self.df_s.iloc[:]) @ np.array(self.dframe[target][1::10])
+        p=self.df_s.iloc[:, :]@x_tilda; 
+        p=(np.array(p))
+        plt.plot( p)
+        plt.title('prdicted outcome'); plt.show()
+        pred = self.df_s@x_tilda
+        plt.plot(self.dframe[target], pred)
+        plt.title('training data plot of pred again truth')
+        plt.xlabel('Truth')
+        plt.ylabel('predicted')
+        
+        
+        
+        
     def latent_var_marg(self):
         ''' interprets spectral diffusivity as variance of means to 
         estimate strain/temp dependence'''
@@ -171,18 +306,19 @@ class processor(SortList):
     
     
     def gaussian(self, x_zpl, amp, u, std):
-        ''' '''
+        ''' gaussian fit'''
         return amp*np.exp(-((x_zpl-u)**2/(2*std**2)))
     
     def two_gaussian(self,x_zpl, amp1, amp2, u1, u2, std1, std2):
+        '''fits two gaussians to the curve with each component being independent'''
         return ((amp1*np.exp(-((x_zpl-u1)**2/(2*std1**2))) + (amp2*np.exp(-((x_zpl-u2)**2/(2*std2**2))) )))
     
     def lorentzian(self, x_zpl, x0, a, gam ):
-        '''x =    '''
+        '''fits a Lorentzian to the curve   '''
         return a * gam**2 / ( gam**2 + ( x_zpl - x0 )**2)
       
     def two_lorentzian(self, x_zpl, x0, x01,a,a2, gam, gam2 ):
-        '''   '''
+        '''fits two Lorentzians to the curve with each component being independent'''  
         return ( (a * gam**2 / ( gam**2 + ( x_zpl - x0 )**2)) + (a2 * gam2**2 / ( gam2**2 + ( x_zpl - x01 )**2))) 
     
     def spline_fit(self, x_zpl, y_zpl_base):
@@ -259,7 +395,7 @@ class processor(SortList):
             area_zpl = trapz(y[(np.abs(x-zp[0])).argmin():(np.abs(x-zp[1])).argmin() ], dx= dx_val)
             area_psb = trapz(y[(np.abs(x-self.huang_rhys[0])).argmin():(np.abs(x-self.huang_rhys[1])).argmin() ], dx= dx_val)
             dw = area_zpl/area_psb
-            self.debye_waller.append(dw)
+            self.debye_waller.append(dw); 
             if func == 'gaussian': 
                  self.popt, self.pcov = curve_fit(self.gaussian,x_zpl, y_zpl_base, [4000, 637.5,1.5], maxfev=max_fev )
                  self.amp, self.center_wavelength, self.FWHM = self.popt

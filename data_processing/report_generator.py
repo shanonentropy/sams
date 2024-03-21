@@ -14,7 +14,7 @@ and then generate:
 
 1-  pair plots (seaborn)  - done
 2-  heatmap (seaborn) - done
-3-  kde plots (seaborn) 
+3-  kde plots (seaborn) -done
 4-  2d correlation plots
 5-  linear regression including polynomial regression (scikit-learn)
 6-  L1 and L2 regularization of regression
@@ -81,7 +81,16 @@ shredder.main_processor()
 shredder.create_dataframe()
 
 #export dataframe
-shredder.export_dataframe('sensor2_week5_cycling_zpl_632_642nm')
+shredder.export_dataframe('sensor2_week3_accelereated_ageing_zpl_632_642nm')
+
+# create data matrix for dim reduction
+shredder.svd_data_matrix(f_save='LN2')
+
+# perform noda's 2D correlation analysis
+shredder.twodim_corr_spect_plot(f_saveas='LN2')
+
+##### perform PCA and LDA
+
 
 
 #make some plots
@@ -92,12 +101,13 @@ import seaborn as sns
 
 #make pairplots
 #sns.pairplot(shredder.dframe, hue='temperature')
-sns.pairplot(shredder.dframe, kind = 'kde', height = 10) # set height
-#sns.pairplot(shredder.dframe, corner=True)
+#sns.pairplot(shredder.dframe, kind = 'kde', height = 10) # set height
+#plt.show()
+sns.pairplot(shredder.dframe, corner=True)
 ## kde plot overlaid scatter plot
-a = sns.pairplot(shredder.dframe, diag_kind='kde')
-a.map_lower(sns.kdeplot, levels= 3,color=".2")
-
+#a = sns.pairplot(shredder.dframe, diag_kind='kde')
+#a.map_lower(sns.kdeplot, levels= 3,color=".2")
+#plt.show()
 # resize the 
 
 #make heatmap
@@ -110,7 +120,7 @@ sns.heatmap(shredder.dframe.iloc[:,1:].corr(method='spearman'), annot=True)
 plt.plot(figsize=(10, 8))
 plt.title('Spearman correlation heatmap')
 plt.show()
-
+'''
 sns.regplot(x=shredder.dframe.temperature, y=shredder.dframe.kl_divergence, order=2)
 plt.title('Temperature vs KL Divergence')
 plt.show()
@@ -126,26 +136,31 @@ plt.show()
 sns.regplot(x=shredder.dframe.time, y=shredder.dframe.wasserstein)
 plt.title('Time vs Wasserstein')
 plt.show()
-
+'''
 plt.plot(shredder.dframe.kl_divergence, shredder.dframe.wasserstein)
 plt.title('KL Divergence vs Wasserstein')
 plt.show()
 
 plt.plot(shredder.dframe.time, shredder.dframe.wasserstein)
-plt.plot(shredder.dframe.time, (shredder.dframe.temperature*56)+16000)
+plt.plot(shredder.dframe.time, (shredder.dframe.temperature*200)+16000)
 plt.title('Temperature and Wasserstein over time')
 plt.show()
 
 plt.plot(shredder.dframe.time, shredder.dframe.kl_divergence)
-plt.plot(shredder.dframe.time, (shredder.dframe.temperature/25000)+.001)
+plt.plot(shredder.dframe.time, (shredder.dframe.temperature/15000)+.001)
 plt.title('Temperature and KL Divergence over time')
 plt.show()
 
 # =============================================================================
 # define index marking end of first ramp
 # =============================================================================
-idx_ramp = 209979
+idx_ramp = 34500
 
+plt.plot(shredder.dframe.time[:idx_ramp], shredder.dframe.temperature[:idx_ramp], 'o')
+plt.plot(shredder.dframe.time[idx_ramp:], shredder.dframe.temperature[idx_ramp:])
+plt.title('Time vs temperature')
+plt.legend(['up', 'down'])
+plt.show()
 
 plt.plot(shredder.dframe.time[:idx_ramp], shredder.dframe.kl_divergence[:idx_ramp])
 plt.plot(shredder.dframe.time[idx_ramp:], shredder.dframe.kl_divergence[idx_ramp:])
@@ -165,9 +180,9 @@ plt.title('Time vs Wasserstein')
 plt.legend(['up', 'down'])
 plt.show()
 
-plt.plot(shredder.dframe.temperature[:idx_ramp], shredder.dframe.debye_waller[:idx_ramp])
-plt.plot(shredder.dframe.temperature[idx_ramp:], shredder.dframe.debye_waller[idx_ramp:])
-plt.title('Time vs KL Divergence')
+plt.plot(shredder.dframe.temperature[:idx_ramp], shredder.dframe.debye_waller[:idx_ramp], 'o')
+plt.plot(shredder.dframe.temperature[idx_ramp:], shredder.dframe.debye_waller[idx_ramp:], 'o')
+plt.title('Temperature vs Debye-Waller Factor')
 plt.legend(['up', 'down'])
 plt.show()
 
@@ -179,6 +194,15 @@ plt.show()
 
 plt.plot(shredder.dframe.temperature[:idx_ramp], shredder.dframe.peak_center[:idx_ramp])
 plt.plot(shredder.dframe.temperature[idx_ramp:], shredder.dframe.peak_center[idx_ramp:])
+plt.ylim(636.5,638.5)
 plt.title('Temperature vs Peak Center')
 plt.legend(['up', 'down'])
 plt.show()
+
+plt.plot(shredder.dframe.time[:idx_ramp], shredder.dframe.debye_waller[:idx_ramp], 'o')
+plt.plot(shredder.dframe.time[idx_ramp:], shredder.dframe.debye_waller[idx_ramp:], 'o')
+plt.title('Time vs Debye-Waller Factor')
+plt.legend(['up', 'down'])
+plt.show()
+
+

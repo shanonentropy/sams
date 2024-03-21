@@ -25,7 +25,7 @@ class Filelister:
         self.path = input("Enter the path for files: ")
         if not self.path:
             self.path =  'c:/sams/saved_data'
-        self.fn =  input('Enter filetype, default filetype is *.csv,')
+        self.fn =  input('Enter filetype, default filetype is /*.csv,')
         self.file_list = []
         if not self.fn:
             self.fn = '/*.csv'
