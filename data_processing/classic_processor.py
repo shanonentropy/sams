@@ -98,7 +98,10 @@ class processor(SortList):
     
     def filter_list(self):
         ''' drop any files with a particular key in them in their names'''
-        self.filtered_files = [name for name in self.filenames if self.k not in name]
+        if len(self.k) <2:
+            self.filtered_files = [name for name in self.filenames if self.k not in name]
+        else: 
+            self.filtered_files = [name for name in self.filenames if all(k not in name for k in self.k)]
         return self.filtered_files    
 
     def reference_spectra(self, ref_index =1):
@@ -194,106 +197,208 @@ class processor(SortList):
         plt.savefig(f_saveas+'asynch', dpi=700)
         #save data
         asynch.to_csv(f_saveas+"_asynch.csv") # note: fn[:-4] drops the ".csv"
- 
-    def svd_data_matrix(self, filter_or_no_filter = None, f_save = 'dummy'):
-        '''this function will assemble the all measurements into a data matrix to be used
-        in svd and pca computations. Notice the f_save =dummy is set such that
-        if I want to give a specific name to the data matrix file, it will be 
-        written in otherwise, it get the dummy prefix that I can overide later on'''
+    
+    
+    def var_step_marker(self, var =  'temperature'):
+        ''' this function takes in the dataframe of processed data and 
+        creates a list of indecies where variable of interest such as temperature
+        change
+        fucntion outputs ramp_indicator_index, this is the index in the list
+        from var_step-marker func marking where the ramp ends
+        used in svd data_matrix, check it using ramp_plot_check
+        '''
+        self.ls = self.dframe[self.dframe[var].diff().abs() > 1].index
+        self.ls = self.ls.insert(0,0)
+        self.ls = self.ls.append( pd.Index([self.dframe.index[-1]]) )
         
-        if filter_or_no_filter == None:
-            self.fil_files = self.filenames
+    def ramp_plot_check(self, var='temperature'):
+        indicator_ = len(self.ls)/2
+        self.ramp_indicator_index = int(np.floor(indicator_))
+        for j in range(len(self.ls)-1):
+            #print(i, i+1)
+            plt.plot(self.dframe.time, self.dframe[var])
+            plt.plot(self.dframe.time.iloc[self.ls[j]], self.dframe[var].iloc[self.ls[j]], 'o')
+            plt.plot(self.dframe.time.iloc[self.ls[self.ramp_indicator_index]], self.dframe[var].iloc[self.ls[self.ramp_indicator_index]], 'rx')
+
+            print("index marking the end of ramp is {}".format(self.ramp_indicator_index))
+    # write a decorator to enable overide of self.ls
+    
+    
+    def svd_data_matrix(self, avgs = 100, ramp_index = 0 ,var =  'temperature',f_save = 'dummy'):
+        '''this function will assemble the all the filtered measurements into a data matrix to be used
+        in svd and pca computations. func takes prepared dataframe as an input
+        groups by temperature in the time domain and then averages each temp block
+        
+        
+        f_save =  output filename, default is dummy
+        avg =  number of files to be averaged
+        ramp_index = default is 0 which will set to ramp_indicator_index
+        determined in ramp_plot_check. Otherwise the function will use user 
+        provided number
+        
+        '''
+        
+        
+        # create the dataframe to log each averaged out observation
+        self.df_s = pd.read_csv( self.filtered_files[0], header = 0, encoding= 'unicode_escape', engine='python', sep=',',  usecols=['Wavelength'])
+        
+        '''
+        # create a list of 
+        if ramp_index == 0:
+            ramp_index = self.ramp_indicator_index
         else:
-            self.fil_files = self.filtered_files
-        # read in the first file in the time sereis. 
-        # Store just the wavelength columns. 
-        #### note the column number changes from 1 to 4 if  
-        # All other files get appended to this file
-        self.df_s = pd.read_csv( self.fil_files[0], header = 0, encoding= 'unicode_escape', engine='python', sep=',',  usecols=['Wavelength'])
-        # read in files
-        read_line = np.arange(1, len(self.fil_files), 10) 
+            ramp_index = ramp_index
         
-        for i in range(len(read_line[:])-1):
-            #print(read_line[i], read_line[i+1])
-            arr1 = read_line[i]
-            arr2 = read_line[i+1]
-            df_ = pd.read_csv( self.fil_files[1], header = 0, encoding= 'unicode_escape', engine='python', sep=',', usecols=['Wavelength'])
-            for j in range(arr1, arr2, 1):
-                #print(j)
-                df_t = pd.read_csv(self.fil_files[j], header = 0, encoding= 'unicode_escape', engine='python', usecols=['Intensity'])
-                #df_t.head(2)
-                df_ = pd.concat([df_, df_t], axis = 1)
-                #print(df_.head(2))
-            df_avg = df_.iloc[:, 1:].mean(axis=1)
-            self.df_s = pd.concat([self.df_s, df_avg], axis = 1)
+        print(ramp_index)   '''
         
-        plt.plot(self.df_s.iloc[:, 0], self.df_s.iloc[:, 1::10]);
-        plt.xlabel('Wavelength (nm)')
-        plt.ylabel('Intensity (AU)')
-        # save data matrix
-        self.df_s.to_csv(f_save+'data_matrix')
+        for k in range(len(self.ls)-1):
+            k1, k2 = self.ls[k], self.ls[k+1]
+            self.temp_filtered_fnm = self.dframe.filename.iloc[k1:k2]
+            print(self.temp_filtered_fnm.iloc[0])
+            temps = self.dframe[var].iloc[k1:k2].mean(); print(temps)
+            df_x = pd.read_csv( self.temp_filtered_fnm.iloc[0], header = 0, encoding= 'unicode_escape', engine='python', sep=',', usecols=['Intensity'])
+            df_x = df_x.rename(columns={'Intensity':temps})
+            for tf in self.temp_filtered_fnm[1:]:
+                df_xx = pd.read_csv( tf, header = 0, encoding= 'unicode_escape', engine='python', sep=',', usecols=['Intensity'])
+                # add command to look up corresponding value of var from dframe
+                df_xx = df_xx.rename(columns={'Intensity':temps})
+                df_x= pd.concat([df_x, df_xx], axis = 1)
+            lin_space = np.append(np.arange(0, int(self.temp_filtered_fnm.count()), avgs), int(self.temp_filtered_fnm.count()))
+            for sl in range(len(lin_space)-1):
+                print(sl)
+                arr1, arr2 = lin_space[sl], lin_space[sl+1]
+                #print(arr1, arr2)
+                df_a1 =  df_x.iloc[:, int(arr1):int(arr2) ].mean(axis=1)
+                df_a = pd.DataFrame({temps: df_a1})
+                #print(df_a.head(2))
+                self.df_s = pd.concat([self.df_s, df_a], axis=1)
+        self.df_s.to_csv(f_save+'_svd_data_matrix_avg')
         ########################
     
     
-    def svd_computation(self, fullmatrix = False):
+    def svd_computation(self, fullmatrix = False, demean = 'yes', f_save = 'dummy'):
         ''' this function will take in the data matrix from svd_data_matrix
         and then compute the svd. Plots show the first 3 U, s and VT modes
         
         fullmatrix default is False, it sets the np.linalg.svd() full-matrix kw
         to True if desired
         
+        default is to compute via the de-centered data matrix which 
+        is save at the end.
+        
         The user is expected to use S. Rajpal's code for Regression
-        using the data matrix saved in the earlier step
+        using the data matrix saved in this step
+        
+        
+        add functionality to save graphs
         
         '''
-              
-        # perform SVD
-        U, s, Vh = np.linalg.svd(self.df_s, full_matrices=True ) 
-        print('eigenmode matrix is {}'.format(U.shape))
-        print('singular value matrix is {}'.format(s.shape))
-        print('loading matrix is {}'.format(Vh.T.shape))
-        print('singular value matrix is {}'.format(s))
+                       
+        if demean == 'yes':
+            self.df_sm = self.df_s.T
+            col_header = self.df_sm.iloc[0]
+            self.df_sm.columns = col_header
+            self.df_sm = self.df_sm[1:]
+            self.df_sm = self.df_sm - self.df_sm.mean()
+            
+            self.U, self.s, self.Vh = np.linalg.svd(self.df_sm, full_matrices=True ) 
         
-        plt.plot(U[:,0], 'm')
-        plt.title('Eigenmode #1')
-        plt.show()
-        plt.plot(U[:,1], 'orange')
-        plt.title('Eigenmode #2')
-        plt.show()
-        plt.plot(U[:,2], 'k')
-        plt.title('Eigenmode #3')
-        plt.show()
-        plt.plot(Vh[0,], 'm')
-        plt.title('Loading #1')
-        plt.show()
-        plt.plot(Vh[1,],'orange')
-        plt.title('Loading #2')
-        plt.show()
-        plt.plot(Vh[2,],'k')
-        plt.title('Loading #3')
-        plt.show()
+            print('eigenmode matrix is {}'.format(self.U.shape))
+            print('singular value matrix is {}'.format(self.s.shape))
+            print('loading matrix is {}'.format(self.Vh.T.shape))
+            print('singular value matrix is {}'.format(self.s))
+            
+            plt.plot(self.U[:,0], 'm')
+            plt.title('Eigenmode #1')
+            plt.savefig('eigenmode_1_', dpi=700)
+            plt.show()
+            plt.plot(self.U[:,1], 'orange')
+            plt.title('Eigenmode #2')
+            plt.savefig('eigenmode_2_', dpi=700)
+            plt.show()
+            plt.plot(self.U[:,2], 'k')
+            plt.title('Eigenmode #3')
+            plt.savefig('Eigenmode_3_', dpi=700)
+            plt.show()
+            plt.plot(self.Vh[0,], 'm')
+            plt.title('Loading #1')
+            plt.show()
+            plt.plot(self.Vh[1,],'orange')
+            plt.title('Loading #2')
+            plt.savefig('Loading_2_', dpi=700)
+            plt.show()
+            plt.plot(self.Vh[2,],'k')
+            plt.title('Loading #3')
+            plt.savefig('Loading_3_', dpi=700)
+            plt.show()
+            self.df_sm.to_csv(f_save+'demean_pca_data_matrix')
+            
+        else:
+            '''note: it is anticipated that this option will be used sparingly
+            hence why the U, Vh, S are retained as local vairables and output
+            not saved'''
+            # perform SVD
+            U, s, Vh = np.linalg.svd(self.df_s, full_matrices=True ) 
         
+            print('eigenmode matrix is {}'.format(U.shape))
+            print('singular value matrix is {}'.format(s.shape))
+            print('loading matrix is {}'.format(Vh.T.shape))
+            print('singular value matrix is {}'.format(s))
+            
+            plt.plot(U[:,0], 'm')
+            plt.title('Loading #1')
+            plt.show()
+            plt.plot(U[:,1], 'orange')
+            plt.title('Loading #2')
+            plt.show()
+            plt.plot(U[:,2], 'k')
+            plt.title('Loading #3')
+            plt.show()
+            plt.plot(Vh[0,], 'm')
+            plt.title('Eigenmode #1')
+            plt.show()
+            plt.plot(Vh[1,],'orange')
+            plt.title('Eigenmode #2')
+            plt.show()
+            plt.plot(Vh[2,],'k')
+            plt.title('Eigenmode #3')
+            plt.show()
+            
         
-        
-        
-        
-    
-    def svd_regression(self, target='temperature'):
+   
+    def svd_regression(self, indexed_target = 'yes',  ext_target='temperature'):
         '''this function takes in the entire dataset 
         for svd compuation and regresses it against a target
-        NOT WORKING - NEED TO FIX IT 
-        '''
         
-        x_tilda = np.linalg.pinv(self.df_s.iloc[:]) @ np.array(self.dframe[target][1::10])
-        p=self.df_s.iloc[:, :]@x_tilda; 
-        p=(np.array(p))
-        plt.plot( p)
-        plt.title('prdicted outcome'); plt.show()
-        pred = self.df_s@x_tilda
-        plt.plot(self.dframe[target], pred)
-        plt.title('training data plot of pred again truth')
-        plt.xlabel('Truth')
-        plt.ylabel('predicted')
+        something is not right
+        '''
+        if indexed_target =='yes':
+            target = self.df_sm.index
+            x_tilda = np.linalg.pinv(self.df_sm.iloc[:]) @ np.array(self.df_sm.index).reshape(-1,1)
+            p=self.df_sm.iloc[:, :]@x_tilda; 
+            p=(np.array(p))
+            plt.plot( p)
+            plt.title('prdicted outcome'); plt.show()
+            #### this is the problem area
+            pred = self.df_sm@x_tilda
+            plt.plot(self.dframe[target], pred)
+            plt.title('training data plot of pred against truth')
+            plt.savefig('svd_regression_', dpi=700)
+            plt.xlabel('Truth')
+            plt.ylabel('predicted')
+            
+        else:
+            target = ext_target
+            x_tilda = np.linalg.pinv(self.df_sm.iloc[:]) @ np.array(self.dframe[ext_target][::self.avgs])
+            p=self.df_sm.iloc[:, :]@x_tilda; 
+            p=(np.array(p))
+            plt.plot( p)
+            plt.title('prdicted outcome'); plt.show()
+            pred = self.df_s@x_tilda
+            plt.plot(self.dframe[ext_target], pred)
+            plt.title('training data plot of pred again truth')
+            plt.xlabel('Truth')
+            plt.ylabel('predicted')
         
         
         
@@ -369,7 +474,7 @@ class processor(SortList):
         
         for f1 in self.filtered_files[:]:
             print(f1)
-            self.fnm.append(f1.split('\\')[1])
+            self.fnm.append(f1) #.split('\\')[1])
             self.frame_num.append(self.file_num(f1))
             ###### open and clean data ####
             df=pd.read_csv(f1, sep=',', header = 0, engine='python')
@@ -481,6 +586,17 @@ class processor(SortList):
     def export_dim_red_data(self):
         ''' export dimensionally reduced data set'''
         pass
+    
+    def plotter(self):
+        ''' plot the all the curves to visually see what the spectra look like '''
+        for f1 in self.filtered_files[:]:
+            print(f1)
+            self.fnm.append(f1.split('\\')[1])
+            self.frame_num.append(self.file_num(f1))
+            ###### open and clean data ####
+            df=pd.read_csv(f1, sep=',', header = 0, engine='python')
+            plt.plot(df.Wavelength, df.Intensity)
+            
         
         
 

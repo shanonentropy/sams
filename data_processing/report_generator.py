@@ -55,6 +55,8 @@ import sys
 sys.path.append('c:/sams/data_processing/')
 #from file_reader_forter_parser import SortList
 from classic_processor import processor
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # import data
 #lister = SortList()
@@ -67,12 +69,13 @@ from classic_processor import processor
 
 ''' classic processor: nv_zpl = [634.25,640.25] '''
 
-shredder =  processor(nv_zpl = [632,642])
-
+shredder =  processor(nv_zpl = [632,642], k = ['Frame-00001', 'Frame-0001'], huang_rhys=[649, 720])
 #file_list = shredder.get_files()
 #sort_list = shredder.sorted_files()
 
 shredder.filter_list()
+
+print(shredder.filtered_files[0])
 
 shredder.main_processor()
 
@@ -81,22 +84,29 @@ shredder.main_processor()
 shredder.create_dataframe()
 
 #export dataframe
-shredder.export_dataframe('sensor2_week3_accelereated_ageing_zpl_632_642nm')
+shredder.export_dataframe( 'sensor_2_week_1_first_cycle')#'sensor_2_week1_second_cycle' )
+
+shredder.var_step_marker(var='temperature')
+
+shredder.ramp_plot_check('temperature')
+
+
 
 # create data matrix for dim reduction
-shredder.svd_data_matrix(f_save='LN2')
+shredder.svd_data_matrix(avgs = 100,ramp_index=0, var = 'temperature' ,f_save= 'sensor_2_week1_first_cycle')#'sensor_2_week1_second_cycle')#'sensor_2_week3_third_cycle_data_matrix_uptp40Conly')
+
+##### examine SVD modes
+
+shredder.svd_computation(f_save='sensor_2_week1_first_cycle')
 
 # perform noda's 2D correlation analysis
-shredder.twodim_corr_spect_plot(f_saveas='LN2')
-
-##### perform PCA and LDA
+shredder.twodim_corr_spect_plot(f_saveas= 'sensor_2_week1_first_cycle')#'sensor_2_week3_third_cycle_2dcorr_uptp40Conly')
 
 
 
 #make some plots
 
-import matplotlib.pyplot as plt
-import seaborn as sns
+shredder.svd_regression(ext_target='temperature')
 
 
 #make pairplots
@@ -107,7 +117,7 @@ sns.pairplot(shredder.dframe, corner=True)
 ## kde plot overlaid scatter plot
 #a = sns.pairplot(shredder.dframe, diag_kind='kde')
 #a.map_lower(sns.kdeplot, levels= 3,color=".2")
-#plt.show()
+plt.show()
 # resize the 
 
 #make heatmap
@@ -154,7 +164,15 @@ plt.show()
 # =============================================================================
 # define index marking end of first ramp
 # =============================================================================
-idx_ramp = 34500
+idx_ramp = 26997
+
+plt.plot(shredder.dframe.time[:idx_ramp], shredder.dframe.laser_power[:idx_ramp], 'o')
+plt.plot(shredder.dframe.time[idx_ramp:], shredder.dframe.laser_power[idx_ramp:])
+plt.title('Time vs temperature')
+plt.legend(['up', 'down'])
+plt.show()
+
+
 
 plt.plot(shredder.dframe.time[:idx_ramp], shredder.dframe.temperature[:idx_ramp], 'o')
 plt.plot(shredder.dframe.time[idx_ramp:], shredder.dframe.temperature[idx_ramp:])

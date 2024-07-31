@@ -86,7 +86,7 @@ class SortList():
         g = self.time_stamp.findall(x)[0].split(' ')
         year, month_str, day, hr = g[0], g[1],g[2], g[3]
         h, m, s = hr.split('_')
-        month_cal ={'January':1, 'Feburary':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'Sept':9, 'Oct':10, 'Nov':11, 'Dec':12}
+        month_cal ={'January':1, 'Feburary':2, 'March':3, 'April':4, 'May':5, 'June':6, 'July':7, 'August':8, 'September':9, 'Octuber':10, 'November':11, 'December':12}
         month = month_cal[month_str]
         mt = time.mktime(datetime.datetime(int(year), int(month), int(day), int(h),int(m),int(s)).timetuple())
         return mt
