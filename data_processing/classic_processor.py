@@ -210,9 +210,11 @@ class processor(SortList):
         self.ls = self.dframe[self.dframe[var].diff().abs() > 1].index
         self.ls = self.ls.insert(0,0)
         self.ls = self.ls.append( pd.Index([self.dframe.index[-1]]) )
+        print('step index list is:',self.ls)
         
     def ramp_plot_check(self, var='temperature'):
         indicator_ = len(self.ls)/2
+        print(indicator_)
         self.ramp_indicator_index = int(np.floor(indicator_))
         for j in range(len(self.ls)-1):
             #print(i, i+1)
@@ -221,6 +223,7 @@ class processor(SortList):
             plt.plot(self.dframe.time.iloc[self.ls[self.ramp_indicator_index]], self.dframe[var].iloc[self.ls[self.ramp_indicator_index]], 'rx')
 
             print("index marking the end of ramp is {}".format(self.ramp_indicator_index))
+            plt.savefig('temp_time_history_plot_', dpi=700)
     # write a decorator to enable overide of self.ls
     
     
@@ -260,12 +263,11 @@ class processor(SortList):
             df_x = df_x.rename(columns={'Intensity':temps})
             for tf in self.temp_filtered_fnm[1:]:
                 df_xx = pd.read_csv( tf, header = 0, encoding= 'unicode_escape', engine='python', sep=',', usecols=['Intensity'])
-                # add command to look up corresponding value of var from dframe
                 df_xx = df_xx.rename(columns={'Intensity':temps})
                 df_x= pd.concat([df_x, df_xx], axis = 1)
             lin_space = np.append(np.arange(0, int(self.temp_filtered_fnm.count()), avgs), int(self.temp_filtered_fnm.count()))
             for sl in range(len(lin_space)-1):
-                print(sl)
+                #print(sl)
                 arr1, arr2 = lin_space[sl], lin_space[sl+1]
                 #print(arr1, arr2)
                 df_a1 =  df_x.iloc[:, int(arr1):int(arr2) ].mean(axis=1)
@@ -290,7 +292,8 @@ class processor(SortList):
         using the data matrix saved in this step
         
         
-        add functionality to save graphs
+        add wavelength info to X-axis
+        take columns headers as a np.array??
         
         '''
                        
@@ -301,94 +304,127 @@ class processor(SortList):
             self.df_sm = self.df_sm[1:]
             self.df_sm = self.df_sm - self.df_sm.mean()
             
-            self.U, self.s, self.Vh = np.linalg.svd(self.df_sm, full_matrices=True ) 
+            self.U, self.s, self.Vt = np.linalg.svd(self.df_sm, full_matrices=True ) 
         
             print('eigenmode matrix is {}'.format(self.U.shape))
             print('singular value matrix is {}'.format(self.s.shape))
-            print('loading matrix is {}'.format(self.Vh.T.shape))
+            print('loading matrix is {}'.format(self.Vt.T.shape))
             print('singular value matrix is {}'.format(self.s))
-            
-            plt.plot(self.U[:,0], 'm')
-            plt.title('Eigenmode #1')
-            plt.savefig('eigenmode_1_', dpi=700)
+            # define the x-axis for plotting
+            x_axis =  np.array(self.df_sm.columns)
+            ''' make and save plots '''
+            plt.plot( self.U[:,0], 'm')
+            plt.title('Coefficients of mode #1')
+            plt.savefig('Coeffcient_of_mode_1_', dpi=700)
             plt.show()
             plt.plot(self.U[:,1], 'orange')
-            plt.title('Eigenmode #2')
-            plt.savefig('eigenmode_2_', dpi=700)
+            plt.title('Coeficient of mode #2')
+            plt.savefig('Coeffcient_of_mode_2_', dpi=700)
             plt.show()
             plt.plot(self.U[:,2], 'k')
-            plt.title('Eigenmode #3')
-            plt.savefig('Eigenmode_3_', dpi=700)
+            plt.title('Coefficients of mode #3')
+            plt.savefig('Coeffcient_of_mode_3_', dpi=700)
             plt.show()
-            plt.plot(self.Vh[0,], 'm')
-            plt.title('Loading #1')
+            plt.plot(self.U[:,3], 'k')
+            plt.title('Coefficients of mode #4')
+            plt.savefig('Coeffcient_of_mode_4_', dpi=700)
             plt.show()
-            plt.plot(self.Vh[1,],'orange')
-            plt.title('Loading #2')
-            plt.savefig('Loading_2_', dpi=700)
+            plt.plot(self.U[:,4], 'k')
+            plt.title('Coefficients of mode #5')
+            plt.xlabel('Wavelength (nm)')
+            plt.savefig('Coeffcient_of_mode_5_', dpi=700)
             plt.show()
-            plt.plot(self.Vh[2,],'k')
-            plt.title('Loading #3')
-            plt.savefig('Loading_3_', dpi=700)
+            plt.plot(x_axis,self.Vt[0,], 'm')
+            plt.title('Mode_1')
+            plt.xlabel('Wavelength (nm)')
+            plt.savefig('Mode_1_', dpi=700)
+            plt.show()
+            plt.plot(x_axis, self.Vt[1,],'orange')
+            plt.title('Mode #2')
+            plt.xlabel('Wavelength (nm)')
+            plt.savefig('Mode_2_', dpi=700)
+            plt.show()
+            plt.plot(x_axis,self.Vt[2,],'k')
+            plt.title('Mode #3')
+            plt.xlabel('Wavelength (nm)')
+            plt.savefig('Mode_3_', dpi=700)
+            plt.show()
+            plt.plot(x_axis, self.Vt[3,],'k')
+            plt.title('Mode #4')
+            plt.xlabel('Wavelength (nm)')
+            plt.savefig('Mode_4_', dpi=700)
+            plt.show()
+            plt.plot(self.Vt[4,],'k')
+            plt.title('Mode #5')
+            plt.xlabel('Wavelength (nm)')
+            plt.savefig('Mode_5_', dpi=700)
+            plt.show()
+            plt.plot(self.s, 'o')
+            plt.savefig('skee_plot', dpi=700)
             plt.show()
             self.df_sm.to_csv(f_save+'demean_pca_data_matrix')
             
         else:
             '''note: it is anticipated that this option will be used sparingly
             hence why the U, Vh, S are retained as local vairables and output
-            not saved'''
+            not saved
+            
+            
+            '''
             # perform SVD
-            U, s, Vh = np.linalg.svd(self.df_s, full_matrices=True ) 
+            U, s, Vt = np.linalg.svd(self.df_s, full_matrices=False ) 
         
             print('eigenmode matrix is {}'.format(U.shape))
             print('singular value matrix is {}'.format(s.shape))
-            print('loading matrix is {}'.format(Vh.T.shape))
+            print('loading matrix is {}'.format(Vt.T.shape))
             print('singular value matrix is {}'.format(s))
             
             plt.plot(U[:,0], 'm')
-            plt.title('Loading #1')
+            plt.title('Mode #1')
             plt.show()
             plt.plot(U[:,1], 'orange')
-            plt.title('Loading #2')
+            plt.title('Mode #2')
             plt.show()
             plt.plot(U[:,2], 'k')
-            plt.title('Loading #3')
+            plt.title('Mode #3')
             plt.show()
-            plt.plot(Vh[0,], 'm')
-            plt.title('Eigenmode #1')
+            plt.plot(Vt[0,], 'm')
+            plt.title('Coeffcient of mode #1')
             plt.show()
-            plt.plot(Vh[1,],'orange')
-            plt.title('Eigenmode #2')
+            plt.plot(Vt[1,],'orange')
+            plt.title('Coeffcient of mode #2')
             plt.show()
-            plt.plot(Vh[2,],'k')
-            plt.title('Eigenmode #3')
+            plt.plot(Vt[2,],'k')
+            plt.title('Coeffcient of mode #3')
+            plt.show()
+            plt.plot(s)
+            plt.plot('singular values')
             plt.show()
             
+    
         
    
-    def svd_regression(self, indexed_target = 'yes',  ext_target='temperature'):
+    def svd_pca_regression(self, indexed_target = 'yes', number_of_modes = 3  ,ext_target='temperature'):
         '''this function takes in the entire dataset 
         for svd compuation and regresses it against a target
         
-        something is not right
         '''
         if indexed_target =='yes':
-            target = self.df_sm.index
-            x_tilda = np.linalg.pinv(self.df_sm.iloc[:]) @ np.array(self.df_sm.index).reshape(-1,1)
-            p=self.df_sm.iloc[:, :]@x_tilda; 
-            p=(np.array(p))
-            plt.plot( p)
-            plt.title('prdicted outcome'); plt.show()
-            #### this is the problem area
-            pred = self.df_sm@x_tilda
-            plt.plot(self.dframe[target], pred)
+            target_var= np.array(self.df_sm.index, dtype='float64')
+            #x_tilda = np.linalg.pinv(self.df_sm.iloc[:]) @ np.array(self.df_sm.index).reshape(-1,1)
+            Vt_k = self.Vt[:number_of_modes, :] 
+            X_pca = self.df_sm @ Vt_k.T
+            X_pca_bias = np.c_[np.ones(X_pca.shape[0]), X_pca]
+            beta = np.linalg.inv(X_pca_bias.T @ X_pca_bias) @ X_pca_bias.T @ target_var
+            pred =  X_pca_bias@beta
+            plt.plot(target_var, pred)
             plt.title('training data plot of pred against truth')
-            plt.savefig('svd_regression_', dpi=700)
+            plt.savefig('pca_regression_', dpi=700)
             plt.xlabel('Truth')
             plt.ylabel('predicted')
+            #add computation of residulal 
             
         else:
-            target = ext_target
             x_tilda = np.linalg.pinv(self.df_sm.iloc[:]) @ np.array(self.dframe[ext_target][::self.avgs])
             p=self.df_sm.iloc[:, :]@x_tilda; 
             p=(np.array(p))
@@ -401,9 +437,53 @@ class processor(SortList):
             plt.ylabel('predicted')
         
         
+    def pca_regression(self, n_comps = 5, poly_deg = 1):
+        from sklearn.decomposition import PCA
+        from sklearn.linear_model import LinearRegression
+        from sklearn.model_selection import train_test_split
+        from sklearn.pipeline import make_pipeline
+        from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+        from sklearn.metrics import mean_squared_error
+        '''add sklearn's PCA regression routine chained to polynommial
+        and/or GP regression'''
+        
+        #### ADD A COLUMN OF ONES TO THE MATRIX
+        ones_col = np.ones((self.df_sm.shape[0], 1))
+        self.df_sm_ones = np.hstack((self.df_sm, ones_col))
+        
+        y = np.array(self.df_sm.index, dtype='float64')
+        X_train, X_test, y_train, y_test = train_test_split(self.df_sm_ones, y, random_state=42)
+
+        # training the model
+        X_reduced = PCA(n_components=self.n_comps).fit_transform(X_train)
+        plt.plot(X_reduced[:,0], X_reduced[:,1]);plt.show;
+        plt.plot(X_reduced[:,0], X_reduced[:,2]);plt.show;
+        plt.plot(X_reduced[:,1], X_reduced[:,2]);plt.show;
         
         
-    def latent_var_marg(self):
+        #fit to a regression model
+        pipeline = make_pipeline(PolynomialFeatures(degree = self.poly_deg), LinearRegression())
+        pipeline.fit(X_reduced, y_train)
+        print(f"Training PCR r-squared {pipeline.score(X_reduced, y_train):.3f}")
+        pred_pca = pipeline.predict(X_reduced)
+        print(f"mean sqaure error for training is {mean_squared_error(y_train, pred_pca):.3f}")
+        resid_pc = y_train - pred_pca
+        plt.plot(y_train, resid_pc, 'o'); 
+        plt.title('training prediction against ground truth');
+        plt.show()
+
+        # vaildation error
+        pred_pca_test =  pipeline.predict(PCA(n_components=self.n_comps).fit_transform(X_test))
+        resid_pca_test = y_test - pred_pca_test
+        plt.plot(y_test, resid_pca_test, 'o'); 
+        plt.title('test prediction against ground truth');
+        plt.savefig('testing error', dpi=700)
+        plt.show()
+        print('mean of the resiudals is {}, while the standard deviation is {}'.format(np.mean(resid_pca_test), np.std(resid_pca_test)))
+        print(f"mean sqaure error for testing is {mean_squared_error(y_test, pred_pca_test):.3f}")
+        pass
+
+    def variance_of_means(self):
         ''' interprets spectral diffusivity as variance of means to 
         estimate strain/temp dependence'''
         
