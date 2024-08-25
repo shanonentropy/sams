@@ -437,7 +437,7 @@ class processor(SortList):
             plt.ylabel('predicted')
         
         
-    def pca_regression(self, n_comps = 5, poly_deg = 1):
+    def pca_regression(self, num_comps = 5, poly_deg = 1):
         from sklearn.decomposition import PCA
         from sklearn.linear_model import LinearRegression
         from sklearn.model_selection import train_test_split
@@ -445,7 +445,8 @@ class processor(SortList):
         from sklearn.preprocessing import StandardScaler, PolynomialFeatures
         from sklearn.metrics import mean_squared_error
         '''add sklearn's PCA regression routine chained to polynommial
-        and/or GP regression'''
+        and/or GP regression
+        NEEDS to be fixed, doesn't reco'''
         
         #### ADD A COLUMN OF ONES TO THE MATRIX
         ones_col = np.ones((self.df_sm.shape[0], 1))
@@ -455,14 +456,14 @@ class processor(SortList):
         X_train, X_test, y_train, y_test = train_test_split(self.df_sm_ones, y, random_state=42)
 
         # training the model
-        X_reduced = PCA(n_components=self.n_comps).fit_transform(X_train)
+        X_reduced = PCA(n_components=num_comps).fit_transform(X_train)
         plt.plot(X_reduced[:,0], X_reduced[:,1]);plt.show;
         plt.plot(X_reduced[:,0], X_reduced[:,2]);plt.show;
         plt.plot(X_reduced[:,1], X_reduced[:,2]);plt.show;
         
         
         #fit to a regression model
-        pipeline = make_pipeline(PolynomialFeatures(degree = self.poly_deg), LinearRegression())
+        pipeline = make_pipeline(PolynomialFeatures(degree = poly_deg), LinearRegression())
         pipeline.fit(X_reduced, y_train)
         print(f"Training PCR r-squared {pipeline.score(X_reduced, y_train):.3f}")
         pred_pca = pipeline.predict(X_reduced)
@@ -473,7 +474,7 @@ class processor(SortList):
         plt.show()
 
         # vaildation error
-        pred_pca_test =  pipeline.predict(PCA(n_components=self.n_comps).fit_transform(X_test))
+        pred_pca_test =  pipeline.predict(PCA(n_components=num_comps).fit_transform(X_test))
         resid_pca_test = y_test - pred_pca_test
         plt.plot(y_test, resid_pca_test, 'o'); 
         plt.title('test prediction against ground truth');

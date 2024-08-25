@@ -91,31 +91,33 @@ shredder.main_processor()
 shredder.create_dataframe()
 
 #export dataframe
-shredder.export_dataframe( export_name = 'sensor_2_week_1_third_cycle')#'sensor_2_week1_second_cycle' )
+shredder.export_dataframe( export_name = 'sensor_2_week_1_fourth_cycle')#'sensor_2_week1_second_cycle' )
 
 shredder.var_step_marker(var='temperature')
 
 shredder.ramp_plot_check('temperature')
 
-idx_ramp = shredder.ls[15]
+idx_ramp = shredder.ls[32]
+
+shredder.plotter()
 
 # create data matrix for dim reduction
-shredder.svd_data_matrix(avgs = 100,ramp_index=0, var = 'temperature' ,f_save= 'sensor_2_week1_third_cycle')#'sensor_2_week3_third_cycle_data_matrix_uptp40Conly')
+shredder.svd_data_matrix(avgs = 100,ramp_index=0, var = 'temperature' ,f_save= 'sensor_2_week1_fourth_cycle')#'sensor_2_week3_third_cycle_data_matrix_uptp40Conly')
 
 ##### examine SVD modes
 
-shredder.svd_computation(f_save='sensor_2_week_1_third_cycle')
+shredder.svd_computation(f_save='sensor_2_week_1_fourth_cycle')
 
 
 #make some plots
-shredder.svd_pca_regression(ext_target='temperature', number_of_modes=10)
+shredder.svd_pca_regression(ext_target='temperature', number_of_modes=5)
 
 #PCA regression with polynomial fit
 
 #shredder.pca_regression( n_comps = 5, poly_deg=1)
 
 # perform noda's 2D correlation analysis
-shredder.twodim_corr_spect_plot(f_saveas= 'sensor_2_week_1_third_cycle_2d_corr')#'sensor_2_week3_third_cycle_2dcorr_uptp40Conly')
+shredder.twodim_corr_spect_plot(f_saveas= 'sensor_2_week_1_fourth_cycle_2d_corr')#'sensor_2_week3_third_cycle_2dcorr_uptp40Conly')
 
 
 
