@@ -14,49 +14,31 @@ import pandas as pd
 from dask.distributed import Client
 import numpy as np
 from dask import delayed
+import peakutils
+import numpy as np
+import pandas as pd
+from scipy import interpolate, optimize
+from scipy import stats
+from peakutils.plot import plot as pplot
+from scipy.optimize import curve_fit
+from scipy.stats import wasserstein_distance
+from numpy import trapz
+import sys
+from scipy import linalg
 
 # Start a local Dask cluster with specific configuration
-#client = Client(n_workers=1, threads_per_worker=2, memory_limit='40GB')
+client = Client(n_workers=1, threads_per_worker=2, memory_limit='40GB')
 
 # Print dashboard link
 #print(client)
 
 
-fpath1 = 'C:/nv_data/data_holder/LN2_bath/*.csv'
+fpath1 = '../sensor2_week5_LN2/*.csv'
 fpath2 = 'C:/nv_data/data_holder/LN2_bath_CWL650nm/*.csv'
 fpath = 'C:/nv_data/data_holder/cooling_to_LN2_second_attempt_CWL_650nm/*.csv'
 f = glob.glob(fpath)
 
-'''
-df = pd.read_csv(f[0], sep=',', header=0, usecols=['Wavelength'] )
 
-ddf = dd.read_csv(f[0], sep=',', header=0, usecols=['Wavelength'])
-
-a_ =  time.time()
-max_amps_df = []
-for i in f:
-    df_ = pd.read_csv(i, sep=',', header=0, usecols=['Intensity'])
-    max_amp = df_.Intensity.max()
-    max_amps_df.append(max_amp)
-print(time.time()-a_)
-
-
-
-a =  time.time()
-max_amps = []
-
-
-def reader(x):
-    ddf_ = dd.read_csv(x, sep=',', header=0, usecols=['Intensity'])
-    max_amp = ddf_.Intensity.max().compute()
-    max_amps.append(max_amp)
-#reader(f)
-ddf = dd.read_csv(f, sep=',', header=0, usecols=['Wavelength', 'Intensity'])
-ddf.groupby('Wavelength')['Intensity'].max().compute()
-print(time.time()-a)
-
-
-'''
 # =============================================================================
 # dask opt
 # =============================================================================
@@ -187,7 +169,7 @@ import peakutils
 import dask
 
 # Initialize Dask client with dashboard
-client = Client(n_workers=4, threads_per_worker=2, memory_limit='40GB', dashboard_address=':8787')
+client = Client(n_workers=4, threads_per_worker=2, memory_limit='40GB')
 
 def process_file(f1, nv_type='nv', func='gaussian', fit_params=[4000, 637.5, 1.5], max_fev=50000, dx=0.01):
     ''' Process a single file and extract features '''
