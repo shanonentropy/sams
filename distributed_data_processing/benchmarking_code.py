@@ -36,6 +36,10 @@ client = Client(n_workers=1, threads_per_worker=2, memory_limit='40GB')
 fpath1 = '../sensor2_week5_LN2/*.csv'
 fpath2 = 'C:/nv_data/data_holder/LN2_bath_CWL650nm/*.csv'
 fpath = 'C:/nv_data/data_holder/cooling_to_LN2_second_attempt_CWL_650nm/*.csv'
+
+
+fpath = 'C:/nv_data/nv_sensor_2/sensor2_12192023week1/sensor2_12192023week1/laser_power_loop/*.csv'
+
 f = glob.glob(fpath)
 
 
@@ -186,11 +190,11 @@ def process_file(f1, nv_type='nv', func='gaussian', fit_params=[4000, 637.5, 1.5
     # Mark out ZPL range of interest
     x_zpl_range = (np.abs(x - zp[0])).argmin(), (np.abs(x - zp[1])).argmin()
     x_zpl, y_zpl = x[x_zpl_range[0]:x_zpl_range[1]], y[x_zpl_range[0]:x_zpl_range[1]]
-    
+        
     base = peakutils.baseline(y_zpl, 1)
     y_zpl_base = y_zpl - base
     
-    dx_val = (x[0] - x[50]) / 50
+    dx_val = (x[0] - x[10]) / 10
     area_zpl = trapz(y[x_zpl_range[0]:x_zpl_range[1]], dx=dx_val)
     area_psb = trapz(y[(np.abs(x - huang_rhys[0])).argmin():(np.abs(x - huang_rhys[1])).argmin()], dx=dx_val)
     dw = area_zpl / area_psb
@@ -226,7 +230,7 @@ delayed_results = [delayed(process_file)(f) for f in files]
 results = dask.compute(*delayed_results)
 
 # Monitor task progress
-progress(delayed_results)
+#progress(delayed_results)
 
 # Compute results
 
@@ -237,7 +241,7 @@ d = time.time() - c
 
 
 
-print(b, d)
+print(d)
 
 
 

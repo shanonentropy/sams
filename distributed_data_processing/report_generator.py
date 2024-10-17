@@ -52,9 +52,9 @@ sh.export_dataframe()
 
 """
 import sys
-sys.path.append('c:/sams/data_processing/')
+sys.path.append('c:/sams/distributed_data_processing/')
 #from file_reader_forter_parser import SortList
-from classic_processor import processor
+from classic_processor_distributed import processor
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -64,15 +64,14 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+import dask
 import dask.dataframe as dd
+from dask.distributed import Client, progress
+from dask import delayed
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.metrics import mean_squared_error
 
 # import data
-#lister = SortList()
-#files = lister.get_files()
-#sorted_files = sorted(files, key=lister.strp_atr)  
-
-
-
 
 ''' classic processor: nv_zpl = [634.25,640.25] '''
 
@@ -88,14 +87,23 @@ shredder.filter_list()
 
 print(shredder.filtered_files[0])
 
-shredder.main_processor()
+client = Client(n_workers=1, threads_per_worker=2, memory_limit='40GB')
+
+
+delayed_results = [delayed(shredder.main_processor)(f) for f in shredder.filter_list()]
+results = dask.compute(*delayed_results)
 
 # create datafrme
 
-shredder.create_dataframe()
+shredder.create_dataframe(results)
 
 #export dataframe
-shredder.export_dataframe( export_name = 'test')#'sensor_2_week1_second_cycle' )
+shredder.export_dataframe( export_name = 'test___')#'sensor_2_week1_second_cycle' )
+
+
+### doesn't work
+#task = [delayed(shredder.plotter)(f) for f in shredder.filter_list()]
+#dask.compute(*task)
 
 shredder.var_step_marker(var='temperature')
 
@@ -103,7 +111,6 @@ shredder.ramp_plot_check('temperature')
 
 idx_ramp = shredder.ls[0]
 
-shredder.plotter()
 
 # create data matrix for dim reduction
 shredder.create_svd_matrix(f_save = 'test')
@@ -115,7 +122,7 @@ shredder.svd_computation(f_save='test')
 
 
 #make some plots
-shredder.svd_pca_regression(ext_target='temperature', number_of_modes=5)
+shredder.svd_pca_regression(ext_target='temperature', number_of_modes=3)
 
 #PCA regression with polynomial fit
 
@@ -157,7 +164,7 @@ plt.title('Spearman correlation heatmap')
 plt.savefig('Spearman correlation heatmap', dpi=700)
 plt.show()
 
-sns.regplot(x=shredder.dframe.temperature, y=shredder.dframe.kl_divergence, order=2)
+sns.regplot(x=shredder.dframe.temperature, y=shredder.dframe.kl_divergence, order=1)
 plt.title('Temperature vs KL Divergence')
 plt.savefig('temperature_vs_kld', dpi=700)
 plt.show()

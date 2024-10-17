@@ -30,6 +30,7 @@ import sys
 from file_reader_sorter_parser import SortList
 from scipy import linalg
 import dask
+import dask.dataframe as dd
 from dask.distributed import Client, progress
 from dask import delayed, compute
 
@@ -86,15 +87,19 @@ class processor(SortList):
         lister = SortList()
         files = lister.get_files()
         self.filenames = sorted(files, key=lister.time_st)  
+        self.k = k
+        self.fsave_path = '../saved_data/'
+        
+        '''
         self.fnm, self.time_step = [],[]
         self.laser_pow, self.amplitude, self.peak_center =[],[],[]
         self.width, self.debye_waller, self.frame_num = [], [],[]
         self.kld, self.wasserstein_dist =[], []
         self.amplitude2, self.peak_center2, self.width2 =[],[],[]
         self.temps = []
-        self.k = k
         
-        '''
+        
+        
         
     def sorted_files(self):
         #sort files by desired key
@@ -140,7 +145,7 @@ class processor(SortList):
         result = ratio * self.spectrum1
         # Sum the resulting values to obtain the KL divergence
         kl_div = np.sum(result)
-        self.kld.append(kl_div)
+        return kl_div
         
         
 
@@ -199,7 +204,7 @@ class processor(SortList):
         asynch = asynch.T
         #plot async data
         contourplot(asynch)
-        plt.savefig(f_saveas+'asynch', dpi=700)
+        plt.savefig(self.fsave_path+f_saveas+'asynch', dpi=700)
         #save data
         asynch.to_csv(f_saveas+"_asynch.csv") # note: fn[:-4] drops the ".csv"
     
@@ -272,11 +277,9 @@ class processor(SortList):
         to True if desired
         
         default is to compute via the de-centered data matrix which 
-        is save at the end.
+        is saved at the end.
         
-        The user is expected to use S. Rajpal's code for Regression
-        using the data matrix saved in this step
-        
+              
         
         add wavelength info to X-axis
         take columns headers as a np.array??
@@ -405,7 +408,7 @@ class processor(SortList):
             pred =  X_pca_bias@beta
             plt.plot(target_var, pred)
             plt.title('training data plot of pred against truth')
-            plt.savefig('pca_regression_', dpi=700)
+            plt.savefig('svd_pca_regression_', dpi=700)
             plt.xlabel('Truth')
             plt.ylabel('predicted')
             #add computation of residulal 
@@ -428,7 +431,7 @@ class processor(SortList):
         from sklearn.linear_model import LinearRegression
         from sklearn.model_selection import train_test_split
         from sklearn.pipeline import make_pipeline
-        from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+        from sklearn.preprocessing import PolynomialFeatures
         from sklearn.metrics import mean_squared_error
         '''add sklearn's PCA regression routine chained to polynommial
         and/or GP regression
@@ -457,6 +460,8 @@ class processor(SortList):
         resid_pc = y_train - pred_pca
         plt.plot(y_train, resid_pc, 'o'); 
         plt.title('training prediction against ground truth');
+        plt.savefig('training error', dpi=700)
+
         plt.show()
 
         # vaildation error
@@ -504,26 +509,16 @@ class processor(SortList):
             r1,r2= sproot(w)
             self.FWHM=np.abs(r1-r2)
             self.center_wavelength = r1 + self.FWHM/2
-            self.peak_center.append(self.center_wavelength)
-            self.width.append(self.FWHM)
-            dx_val = (x[0]-x[50])/50
-            area_zpl = trapz(y[(np.abs(x-zp[0])).argmin():(np.abs(x-zp[1])).argmin() ], dx= dx_val)
-            area_psb = trapz(y[(np.abs(x-self.huang_rhys[0])).argmin():(np.abs(x-self.huang_rhys[1])).argmin() ], dx= dx_val)
-            dw = area_zpl/area_psb
-            self.debye_waller.append(dw)
+            self.result.update({'peak_center': self.center_wavelength, 'width': self.FWHM, 'laser_pow': self.laser_power(f1), 'temps': float(self.temp(f1)) })
+
+
         else:
-            self.peak_center.append('NaN')
-            self.width.append('NaN')
-            dx_val = (x[0]-x[50])/50
-            area_zpl = trapz(y[(np.abs(x-zp[0])).argmin():(np.abs(x-zp[1])).argmin() ], dx= dx_val)
-            area_psb = trapz(y[(np.abs(x-self.huang_rhys[0])).argmin():(np.abs(x-self.huang_rhys[1])).argmin() ], dx= dx_val)
-            dw = area_zpl/area_psb
-            self.debye_waller.append(dw)
+            result.update({'peak_center': 'NaN', 'width': 'NaN' })
             print('pass');pass
             
             
         
-    def main_processor(self, nv_type='nv', func = 'gaussian', fit_params = [4000, 637.5,1.5], max_fev=50000, dx = 0.01 ):
+    def main_processor(self, f1, nv_type='nv', func = 'gaussian', fit_params = [4000, 637.5,1.5], max_fev=50000, dx = 0.01 ):
         ''' nv_type = enter nv for nv(-) or nv0 for nv_zero; default is nv
         
         func is the fitting function used. default is gaussian, other options 
@@ -539,130 +534,99 @@ class processor(SortList):
             zp=self.nv0_zpl
         ref = self.reference_spectra()
         
-        for f1 in self.filtered_files[:]:
-            print(f1)
-            self.fnm.append(f1) #.split('\\')[1])
-            self.frame_num.append(self.file_num(f1))
-            ###### open and clean data ####
-            df=pd.read_csv(f1, sep=',', header = 0, engine='python')
-            df.sort_values(by='Wavelength', ascending=True)
-            df.drop_duplicates(subset='Wavelength', keep='first', inplace=True)
-            x,y=df['Wavelength'],df['Intensity']
-            ### mark out zpl range of interest #####
-            x_zpl, y_zpl = x[(np.abs(x-zp[0])).argmin():(np.abs(x-zp[1])).argmin() ],\
-            y[(np.abs(x-zp[0])).argmin():(np.abs(x-zp[1])).argmin() ]
-            #indexes = peakutils.indexes(y_zpl, thres=100, min_dist=3)
-            #plt.figure(figsize=(10,6))
-            #pplot(x_zpl, y_zpl, indexes)
-            ##### remove baseline #########
-            base = peakutils.baseline(y_zpl, 1)
-            y_zpl_base = y_zpl-base
-            #plt.figure(figsize=(10,6))
-            #plt.plot(x_zpl, y_zpl_base)
-            #plt.title("ZPL data with baseline removed")
-            self.time_step.append(self.time_st(f1))
-            self.kl_divergence(y)
-            self.wasserstein_dist.append(wasserstein_distance(y, self.spectrum1))
-            dx_val = (x[0]-x[50])/50
-            area_zpl = trapz(y[(np.abs(x-zp[0])).argmin():(np.abs(x-zp[1])).argmin() ], dx= dx_val)
-            area_psb = trapz(y[(np.abs(x-self.huang_rhys[0])).argmin():(np.abs(x-self.huang_rhys[1])).argmin() ], dx= dx_val)
-            dw = area_zpl/area_psb
-            self.debye_waller.append(dw); 
-            if func == 'gaussian': 
-                 self.popt, self.pcov = curve_fit(self.gaussian,x_zpl, y_zpl_base, [4000, 637.5,1.5], maxfev=max_fev )
-                 self.amp, self.center_wavelength, self.FWHM = self.popt
-                 self.peak_center.append(self.center_wavelength);
-                 self.width.append(self.FWHM);
-                 self.amplitude.append(self.amp);
-                 lp = self.laser_power(f1)
-                 self.laser_pow.append(lp)
-                 self.temps.append(float(self.temp(f1)))
-                 
-            elif func == 'lorentzian':
-                self.popt, self.pcov = curve_fit(self.lorentzian,x_zpl, y_zpl_base, [4000, 637.5,1.5], maxfev=max_fev )
-                self.amp, self.center_wavelength, self.FWHM = self.popt; print(self.center_wavelength)
-                self.peak_center.append(self.center_wavelength);
-                self.width.append(self.FWHM);
-                self.amplitude.append(self.amp);
-                self.laser_pow.append(self.laser_power(f1))
-                self.temps.append(self.temp(f1))
-                
-            elif func == 'two_lorentzian' :
-                self.popt, self.pcov = curve_fit(self.two_lorentzian,x_zpl, y_zpl_base, [4000,5000, 636.5,637.5,1.5,1.5], maxfev=max_fev )
-                self.amp, self.amp2, self.center_wavelength,self.center_wavelength2 ,self.FWHM, self.FWHM = self.popt
-                self.peak_center.append(self.center_wavelength);
-                self.peak_center2.append(self.center_wavelength2)
-                ''' do just add self.amp2, self.center_wavelength2, self.FWHM2 '''
-                self.width.append(self.FWHM);
-                self.amplitude.append(self.amp);
-                self.width2.append(self.FWHM2);
-                self.amplitude2.append(self.amp2);
-                self.laser_pow.append(self.laser_power(f1))
-                self.temps.append(self.temp(f1))
-
-            elif func == 'two_gaussian':
-                self.popt, self.pcov = curve_fit(self.two_gaussian,x_zpl, y_zpl_base, [4000,5000, 636.5,637.5,1.5,1.5], maxfev=max_fev )
-                self.amp, self.amp2, self.center_wavelength, self.center_wavelength2 ,self.FWHM, self.FWHM2 = self.popt
-                self.peak_center.append(self.center_wavelength);
-                self.peak_center2.append(self.center_wavelength2);
-                self.width.append(self.FWHM);
-                self.amplitude.append(self.amp);
-                self.width.append(self.FWHM);
-                self.amplitude.append(self.amp);
-                self.width2.append(self.FWHM2);
-                self.amplitude2.append(self.amp2);
-                self.laser_pow.append(self.laser_power(f1))
-                self.laser_pow.append(self.laser_power(f1))
-                self.temps.append(self.temp(f1))
-
-            else:
-                if 'sproot' not in sys.modules:
-                    from scipy.interpolate import splrep, sproot
-                self.spline_fit(x_zpl, y_zpl_base)
-                #self.temps.append(self.temp(f1))
-                
-    def create_dataframe(self, func = 'gaussian'):
+        print(f1)
+        result= {'frame_num': self.file_num(f1)} 
         
-        if func == 'gaussian' or func == 'lorentzian':
-            self.dframe = pd.DataFrame(list(zip(self.fnm, self.time_step, self.temps,
-                                       self.frame_num, self.laser_pow, self.amplitude, 
-                                       self.peak_center, self.width, self.debye_waller, 
-                                       self.kld, self.wasserstein_dist )))
-            self.dframe.columns = ['filename',  'time', 'temperature', 'frame_num', 'laser_power', 'amplitude',
-                      'peak_center', 'width', 'debye_waller', 'kl_divergence', 'wasserstein']
-        elif func == 'spline':
-            self.dframe = pd.DataFrame(list(zip(self.fnm, self.time_step, self.temps,
-                                       self.frame_num, self.laser_pow, self.amplitude, 
-                                       self.peak_center, self.width, self.debye_waller, 
-                                       self.kld, self.wasserstein_dist )))
-            self.dframe.columns = ['filename',  'time', 'temperature','frame_num', 'laser_power', 'amplitude',
-                      'peak_center', 'width', 'debye_waller', 'kl_divergence', 'wasserstein']
+        
+        ###### open and clean data ####
+        df=pd.read_csv(f1, sep=',', header = 0, engine='python')
+        df.sort_values(by='Wavelength', ascending=True)
+        df.drop_duplicates(subset='Wavelength', keep='first', inplace=True)
+        x,y=df['Wavelength'],df['Intensity']
+        
+        ### mark out zpl range of interest #####
+        x_zpl, y_zpl = x[(np.abs(x-zp[0])).argmin():(np.abs(x-zp[1])).argmin() ],\
+        y[(np.abs(x-zp[0])).argmin():(np.abs(x-zp[1])).argmin() ]
+        
+        ##### remove baseline #########
+        base = peakutils.baseline(y_zpl, 1)
+        y_zpl_base = y_zpl-base
+        #plt.figure(figsize=(10,6))
+        #plt.plot(x_zpl, y_zpl_base)
+        #plt.title("ZPL data with baseline removed")
+        #result.update({'kl_divergence': self.kl_divergence(y)})
+        #### compute stats ###
+
+        dx_val = (x[0]-x[50])/50
+        area_zpl = trapz(y[(np.abs(x-zp[0])).argmin():(np.abs(x-zp[1])).argmin() ], dx= dx_val)
+        area_psb = trapz(y[(np.abs(x-self.huang_rhys[0])).argmin():(np.abs(x-self.huang_rhys[1])).argmin() ], dx= dx_val)
+        dw = area_zpl/area_psb
+        result.update({'time': self.time_st(f1), 'wasserstein': wasserstein_distance(y, self.spectrum1), 'debye_waller': dw })
+        ### fit the ZPL ####
+        
+        if func == 'gaussian': 
+             popt, pcov = curve_fit(self.gaussian,x_zpl, y_zpl_base, [4000, 637.5,1.5], maxfev=max_fev )
+             amp, center_wavelength, FWHM = popt
+             result.update({'peak_center': center_wavelength, 'width': FWHM, 'amplitude':amp, 
+                            'laser_pow': self.laser_power(f1), 'temperature': float(self.temp(f1)) })
+
+             
+        elif func == 'lorentzian':
+            self.popt, self.pcov = curve_fit(self.lorentzian,x_zpl, y_zpl_base, [4000, 637.5,1.5], maxfev=max_fev )
+            self.amp, self.center_wavelength, self.FWHM = self.popt; print(self.center_wavelength)
+            result.update({'peak_center': self.center_wavelength, 'width': self.FWHM, 'amplitude':self.amp, 
+                           'laser_pow': self.laser_power(f1), 'temperature': float(self.temp(f1)) })
+         
+        elif func == 'two_lorentzian' :
+            self.popt, self.pcov = curve_fit(self.two_lorentzian,x_zpl, y_zpl_base, [4000,5000, 636.5,637.5,1.5,1.5], maxfev=max_fev )
+            self.amp, self.amp2, self.center_wavelength,self.center_wavelength2 ,self.FWHM, self.FWHM = self.popt
+            result.update({'peak_center': self.center_wavelength,'peak_center2': self.center_wavelength2, 
+                           'width': self.FWHM, 'width2': self.FWHM2,
+                           'amplitude':self.amp, 'amplitude2':self.amp2, 
+                           'laser_pow': self.laser_power(f1), 'temperature': float(self.temp(f1)) })
+
+        elif func == 'two_gaussian':
+            self.popt, self.pcov = curve_fit(self.two_gaussian,x_zpl, y_zpl_base, [4000,5000, 636.5,637.5,1.5,1.5], maxfev=max_fev )
+            self.amp, self.amp2, self.center_wavelength, self.center_wavelength2 ,self.FWHM, self.FWHM2 = self.popt
+            result.update({'peak_center': self.center_wavelength,'peak_center2': self.center_wavelength2, 
+                           'width': self.FWHM, 'width2': self.FWHM2,
+                           'amplitude':self.amp, 'amplitude2':self.amp2, 
+                           'laser_pow': self.laser_power(f1), 'temperature': float(self.temp(f1)) })
+
         else:
-            self.dframe = pd.DataFrame(list(zip(self.fnm, self.time_step, self.temps,
-                                       self.frame_num, self.laser_pow, self.amplitude, 
-                                       self.peak_center, self.width, self.debye_waller, 
-                                       self.kld, self.wasserstein_dist, self.amplitude2, self.peak_center2, self.width2 )))
-            self.dframe.columns = ['filename',  'time','temperature', 'frame_num', 'laser_power', 'amplitude',
-                      'peak_center', 'width', 'debye_waller', 'kl_divergence', 'wasserstein',
-                      'amplitude2', 'peak_center2', 'width2']
+            if 'sproot' not in sys.modules:
+                from scipy.interpolate import splrep, sproot
+                self.spline_fit(x_zpl, y_zpl_base)
+                #### add rest of routine note: so gaussian/lorentzian seem to be enough and sproot had more issues
+                ####  and is less physics oriented solution
+            #self.temps.append(self.temp(f1))
+            
+        return result
+       
+      
+    def create_dataframe(self, results_, func = 'gaussian'):
+       
+        self.dframe = pd.DataFrame(results_) 
+
         
     def export_dataframe(self, export_name = 'name_me'):
-        self.dframe.to_csv('c:/sams/saved_data/'+export_name)
+        self.dframe.to_csv('../saved_data/'+export_name)
         
     
     def export_dim_red_data(self):
         ''' export dimensionally reduced data set'''
         pass
     
-    def plotter(self):
-        ''' plot the all the curves to visually see what the spectra look like '''
-        for f1 in self.filtered_files[:]:
-            print(f1)
-            self.fnm.append(f1.split('\\')[1])
-            self.frame_num.append(self.file_num(f1))
-            ###### open and clean data ####
-            df=pd.read_csv(f1, sep=',', header = 0, engine='python')
-            plt.plot(df.Wavelength, df.Intensity)
+    def plotter(self, f1):
+        ''' plot the curve to visually see what the spectra look like
+        function will be based to the dask loop in report generator
+        '''
+        
+        print(f1)
+        ###### open and clean data ####
+        df=dd.read_csv(f1, sep=',', header = 0, engine='python')
+        #df_comp = df.compute()
+        plt.plot(df.Wavelength, df.Intensity)
             
         
         
