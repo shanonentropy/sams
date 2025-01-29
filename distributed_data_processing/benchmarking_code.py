@@ -38,9 +38,9 @@ fpath2 = 'C:/nv_data/data_holder/LN2_bath_CWL650nm/*.csv'
 fpath = 'C:/nv_data/data_holder/cooling_to_LN2_second_attempt_CWL_650nm/*.csv'
 
 
-fpath = 'C:/nv_data/nv_sensor_2/sensor2_12192023week1/sensor2_12192023week1/laser_power_loop/*.csv'
+#fpath = 'C:/nv_data/nv_sensor_2/sensor2_12192023week1/sensor2_12192023week1/laser_power_loop/*.csv'
 
-f = glob.glob(fpath)
+f = glob.glob(fpath1)
 
 
 # =============================================================================
